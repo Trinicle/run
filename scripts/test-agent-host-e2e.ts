@@ -47,21 +47,6 @@ const suites: readonly ISuite[] = [
 		label: 'Conformance',
 		file: 'src/vs/platform/agentHost/test/node/e2e/conformance/agentHostConformance.integrationTest.ts',
 	},
-	{
-		id: 'claude',
-		label: 'Claude',
-		file: 'src/vs/platform/agentHost/test/node/e2e/providers/claudeAgentHostE2E.integrationTest.ts',
-	},
-	{
-		id: 'codex',
-		label: 'Codex',
-		file: 'src/vs/platform/agentHost/test/node/e2e/providers/codexAgentHostE2E.integrationTest.ts',
-	},
-	{
-		id: 'copilot',
-		label: 'Copilot',
-		file: 'src/vs/platform/agentHost/test/node/e2e/providers/copilotAgentHostE2E.integrationTest.ts',
-	},
 ];
 
 async function main(): Promise<void> {

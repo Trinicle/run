@@ -22,8 +22,14 @@ import { NullTelemetryService, NullTelemetryServiceShape } from '../../../teleme
 import type { ITelemetryService } from '../../../telemetry/common/telemetry.js';
 import { RequestService } from '../../../request/node/requestService.js';
 import { AgentSdkDownloader, resolveSdkTarget, type IAgentSdkPackage, type IAgentSdkDownloadProgress } from '../../node/agentSdkDownloader.js';
-import { ClaudeSdkPackage } from '../../node/claude/claudeAgentSdkService.js';
 import { AgentHostClaudeSdkRootEnvVar } from '../../common/agentService.js';
+
+const ClaudeSdkPackage: IAgentSdkPackage = {
+	id: 'claude',
+	displayName: 'Claude',
+	devOverrideEnvVar: AgentHostClaudeSdkRootEnvVar,
+	hasSeparateMuslLinuxPackage: true,
+};
 import type { INativeEnvironmentService } from '../../../environment/common/environment.js';
 import type { IProductService } from '../../../product/common/productService.js';
 

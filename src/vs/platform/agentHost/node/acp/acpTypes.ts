@@ -3,6 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as acp from '@agentclientprotocol/sdk';
+
 /**
  * Wire types for the Agent Client Protocol subset the agent host speaks.
  * Shapes follow ACP v1 with v2 fields accepted where they appear.
@@ -84,24 +86,23 @@ export interface IAcpInitializeResult {
 }
 
 export interface IAcpStdioMcpServer {
-	readonly type: 'stdio';
 	readonly name: string;
 	readonly command: string;
-	readonly args?: readonly string[];
-	readonly env?: readonly { readonly name: string; readonly value: string }[];
+	readonly args: readonly string[];
+	readonly env: readonly { readonly name: string; readonly value: string }[];
 }
 
 export interface IAcpHttpMcpServer {
 	readonly type: 'http';
 	readonly name: string;
 	readonly url: string;
-	readonly headers?: Record<string, string>;
+	readonly headers: readonly { readonly name: string; readonly value: string }[];
 }
 
 export interface IAcpChannelMcpServer {
 	readonly type: 'acp';
 	readonly name: string;
-	readonly id: string;
+	readonly serverId: string;
 }
 
 export type IAcpMcpServer = IAcpStdioMcpServer | IAcpHttpMcpServer | IAcpChannelMcpServer;
@@ -182,7 +183,8 @@ export interface IAcpFsWriteTextFileParams {
 }
 
 export interface IAcpMcpConnectParams {
-	readonly acpId: string;
+	readonly serverId?: string;
+	readonly acpId?: string;
 }
 
 export interface IAcpMcpMessageParams {
@@ -191,18 +193,12 @@ export interface IAcpMcpMessageParams {
 	readonly params?: unknown;
 }
 
-export function agentSupportsAcpMcp(result: IAcpInitializeResult): boolean {
-	const sessionAcp = result.capabilities?.session?.mcp?.acp;
-	if (sessionAcp !== undefined && sessionAcp !== null) {
-		return sessionAcp !== false;
-	}
-	return result.capabilities?.mcpCapabilities?.acp === true;
+export function agentSupportsAcpMcp(result: acp.InitializeResponse): boolean {
+	return result.agentCapabilities?.mcpCapabilities?.acp === true;
 }
 
-export function agentSupportsStdioMcp(result: IAcpInitializeResult): boolean {
-	const stdio = result.capabilities?.session?.mcp?.stdio;
-	if (stdio !== undefined && stdio !== null) {
-		return stdio !== false;
-	}
-	return result.capabilities?.mcpCapabilities?.stdio === true;
+export function agentSupportsStdioMcp(result: acp.InitializeResponse): boolean {
+	// Stdio MCP is the baseline ACP transport. The SDK capability bag only
+	// flags http/sse/acp; treat stdio as available whenever initialize succeeded.
+	return result.agentCapabilities !== undefined || result.protocolVersion !== undefined;
 }

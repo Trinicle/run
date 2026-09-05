@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import assert from 'assert';
+import * as acp from '@agentclientprotocol/sdk';
 import { DeferredPromise, timeout } from '../../../../../base/common/async.js';
 import { Event } from '../../../../../base/common/event.js';
 import { Disposable } from '../../../../../base/common/lifecycle.js';
@@ -21,66 +22,73 @@ import { McpServerType } from '../../../../mcp/common/mcpPlatformTypes.js';
 import { IAgentConfigurationService } from '../../../node/agentConfigurationService.js';
 import { ActiveClientToolSet } from '../../../node/activeClientState.js';
 import { parseAcpAgentDefinitions } from '../../../node/acp/acpAgentConfig.js';
-import { AcpAgentProvider, resolveAcpAgentDefinitions, toAcpMcpServers } from '../../../node/acp/acpAgentProvider.js';
+import { IInstantiationService } from '../../../../../platform/instantiation/common/instantiation.js';
+import { IAgentHostProviderService } from '../../../node/agentHostProviderService.js';
+import { AcpAgentProvider, registerAcpAgentProviders, resolveAcpAgentDefinitions, toAcpMcpServers } from '../../../node/acp/acpAgentProvider.js';
 import { AcpClientBridge } from '../../../node/acp/acpClientBridge.js';
 import { AcpEventMapper } from '../../../node/acp/acpEventMapper.js';
 import { AcpSessionManager } from '../../../node/acp/acpSessionManager.js';
-import { ACP_CLIENT_TOOLS_MCP_NAME, type IAcpMcpServer } from '../../../node/acp/acpTypes.js';
-import { createLinkedAcpTransports, type IAcpIncomingRequest, type IAcpTransport } from '../../../node/acp/acpTransport.js';
+import { ACP_CLIENT_TOOLS_MCP_NAME } from '../../../node/acp/acpTypes.js';
+import { createLinkedAcpTransports, type IAcpTransport } from '../../../node/acp/acpTransport.js';
 
-class FakeAcpAgent extends Disposable {
+class FakeAcpAgent extends Disposable implements acp.Agent {
 	promptCount = 0;
-	lastNewSessionParams: { cwd?: string; mcpServers?: readonly IAcpMcpServer[] } | undefined;
+	authenticateCount = 0;
+	lastAuthMethodId: string | undefined;
+	readonly loadedSessionIds: string[] = [];
+	lastNewSessionParams: acp.NewSessionRequest | undefined;
 	private readonly _promptGates: DeferredPromise<void>[] = [];
 
 	constructor(
-		readonly transport: IAcpTransport,
+		readonly connection: acp.AgentSideConnection,
 		private readonly _options: {
 			readonly autoCompletePrompt?: boolean;
-			readonly onPrompt?: (params: unknown) => Promise<void> | void;
+			readonly loadSession?: boolean;
+			readonly authMethods?: readonly acp.AuthMethod[];
+			readonly onPrompt?: (params: acp.PromptRequest) => Promise<void> | void;
 		} = {},
 	) {
 		super();
-		this._register(transport.onRequest(request => {
-			void this._handle(request);
-		}));
 	}
 
 	completeNextPrompt(): void {
 		this._promptGates.shift()?.complete();
 	}
 
-	private async _handle(request: IAcpIncomingRequest): Promise<void> {
-		try {
-			switch (request.method) {
-				case 'initialize':
-					this.transport.sendResult(request.id, {
-						protocolVersion: 1,
-						capabilities: { session: { mcp: { acp: {}, stdio: {} } } },
-					});
-					return;
-				case 'session/new':
-					this.lastNewSessionParams = request.params as { cwd?: string; mcpServers?: readonly IAcpMcpServer[] };
-					this.transport.sendResult(request.id, { sessionId: 'acp-1' });
-					return;
-				case 'session/prompt': {
-					this.promptCount++;
-					await this._options.onPrompt?.(request.params);
-					if (this._options.autoCompletePrompt === false) {
-						const gate = new DeferredPromise<void>();
-						this._promptGates.push(gate);
-						await gate.p;
-					}
-					this.transport.sendResult(request.id, { stopReason: 'end_turn' });
-					return;
-				}
-				default:
-					this.transport.sendError(request.id, -32601, `Unknown method ${request.method}`);
-			}
-		} catch (error) {
-			this.transport.sendError(request.id, -32603, error instanceof Error ? error.message : String(error));
-		}
+	initialize(params: acp.InitializeRequest): acp.InitializeResponse {
+		return {
+			protocolVersion: params.protocolVersion,
+			agentCapabilities: { loadSession: this._options.loadSession === true, mcpCapabilities: { acp: true, stdio: true } },
+			authMethods: this._options.authMethods ? [...this._options.authMethods] : [],
+		};
 	}
+
+	newSession(params: acp.NewSessionRequest): acp.NewSessionResponse {
+		this.lastNewSessionParams = params;
+		return { sessionId: 'acp-1' };
+	}
+
+	authenticate(params: acp.AuthenticateRequest): void {
+		this.authenticateCount++;
+		this.lastAuthMethodId = params.methodId;
+	}
+
+	loadSession(params: acp.LoadSessionRequest): void {
+		this.loadedSessionIds.push(params.sessionId);
+	}
+
+	async prompt(params: acp.PromptRequest): Promise<acp.PromptResponse> {
+		this.promptCount++;
+		await this._options.onPrompt?.(params);
+		if (this._options.autoCompletePrompt === false) {
+			const gate = new DeferredPromise<void>();
+			this._promptGates.push(gate);
+			await gate.p;
+		}
+		return { stopReason: 'end_turn' };
+	}
+
+	cancel(): void { }
 }
 
 function createConfigService(mcpServers: Record<string, unknown> = {}): IAgentConfigurationService {
@@ -119,11 +127,49 @@ suite('ACP agent provider', () => {
 		]);
 	});
 
+	test('resolveAcpAgentDefinitions includes built-ins when env is empty', () => {
+		const ids = resolveAcpAgentDefinitions(undefined, undefined).map(definition => definition.id);
+		assert.deepStrictEqual(ids, ['copilotcli', 'claude', 'codex']);
+	});
+
+	test('user ACP id is an extra agent; same id overrides only that built-in', () => {
+		const definitions = resolveAcpAgentDefinitions(undefined, [
+			{ id: 'gemini', command: 'gemini', args: ['--acp'] },
+			{ id: 'claude', command: 'my-claude' },
+		]);
+		assert.strictEqual(definitions.find(definition => definition.id === 'claude')?.command, 'my-claude');
+		assert.strictEqual(definitions.find(definition => definition.id === 'gemini')?.command, 'gemini');
+		assert.strictEqual(definitions.find(definition => definition.id === 'copilotcli')?.command, 'copilot');
+		assert.ok(definitions.some(definition => definition.id === 'codex'));
+	});
+
 	test('resolveAcpAgentDefinitions prefers the env JSON over root config', () => {
-		assert.deepStrictEqual(
-			resolveAcpAgentDefinitions('[{"id":"env","command":"env-bin"}]', [{ id: 'root', command: 'root-bin' }]),
-			[{ id: 'env', command: 'env-bin', name: undefined, description: undefined, args: undefined, env: undefined }],
+		const definitions = resolveAcpAgentDefinitions('[{"id":"env","command":"env-bin"}]', [{ id: 'root', command: 'root-bin' }]);
+		assert.ok(definitions.some(definition => definition.id === 'env' && definition.command === 'env-bin'));
+		assert.ok(!definitions.some(definition => definition.id === 'root'));
+		assert.ok(definitions.some(definition => definition.id === 'copilotcli'));
+	});
+
+	test('registerAcpAgentProviders registers one provider per definition', () => {
+		const registered: string[] = [];
+		const providers = new Map<string, { id: string }>();
+		const instantiationService = {
+			createInstance: (_ctor: unknown, definition: { id: string }) => ({ id: definition.id, dispose() { } }),
+		};
+		const providerService = {
+			getProvider: (id: string) => providers.get(id),
+			registerProvider: (provider: { id: string }) => {
+				registered.push(provider.id);
+				providers.set(provider.id, provider);
+			},
+		};
+		const store = registerAcpAgentProviders(
+			instantiationService as IInstantiationService,
+			providerService as IAgentHostProviderService,
+			resolveAcpAgentDefinitions(undefined, [{ id: 'gemini', command: 'gemini' }]),
 		);
+		store.dispose();
+		assert.deepStrictEqual(registered, ['copilotcli', 'claude', 'codex', 'gemini']);
 	});
 
 	test('buildAgentSdkEnv forwards ACP agent definitions', () => {
@@ -134,21 +180,21 @@ suite('ACP agent provider', () => {
 	});
 
 	test('createChat + sendMessage maps ACP text into AgentSignals then completes the turn', async () => {
-		const { client, agent } = createLinkedAcpTransports();
-		store.add(client);
-		store.add(agent);
-		store.add(new FakeAcpAgent(agent, {
+		let fake: FakeAcpAgent;
+		const { client } = createLinkedAcpTransports(connection => fake = new FakeAcpAgent(connection, {
 			onPrompt: async () => {
-				agent.sendNotification('session/update', {
+				await connection.sessionUpdate({
 					sessionId: 'acp-1',
 					update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'Hello' } },
 				});
-				agent.sendNotification('session/update', {
+				await connection.sessionUpdate({
 					sessionId: 'acp-1',
 					update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: ' world' } },
 				});
 			},
 		}));
+		store.add(client);
+		store.add(fake!);
 
 		const provider = createProvider(client);
 		const session = AgentSession.uri(definition.id, 'session-1');
@@ -165,10 +211,10 @@ suite('ACP agent provider', () => {
 	});
 
 	test('second sendMessage waits for the in-flight ACP prompt (N clients, one ACP turn)', async () => {
-		const { client, agent } = createLinkedAcpTransports();
+		let fake: FakeAcpAgent;
+		const { client } = createLinkedAcpTransports(connection => fake = new FakeAcpAgent(connection, { autoCompletePrompt: false }));
 		store.add(client);
-		store.add(agent);
-		const fake = store.add(new FakeAcpAgent(agent, { autoCompletePrompt: false }));
+		store.add(fake!);
 		const provider = createProvider(client);
 		const session = AgentSession.uri(definition.id, 'session-lock');
 		const chat = URI.parse(buildDefaultChatUri(session.toString()));
@@ -196,10 +242,10 @@ suite('ACP agent provider', () => {
 	});
 
 	test('session/new advertises MCP-over-ACP client tools plus configured stdio MCP servers', async () => {
-		const { client, agent } = createLinkedAcpTransports();
+		let fake: FakeAcpAgent;
+		const { client, agent } = createLinkedAcpTransports(connection => fake = new FakeAcpAgent(connection));
 		store.add(client);
-		store.add(agent);
-		const fake = store.add(new FakeAcpAgent(agent));
+		store.add(fake!);
 		const provider = createProvider(client, {
 			docs: { type: McpServerType.LOCAL, command: 'npx', args: ['-y', 'docs-mcp'] },
 		});
@@ -213,10 +259,10 @@ suite('ACP agent provider', () => {
 		const acpTools = servers.find(server => server.type === 'acp');
 		assert.ok(acpTools);
 		assert.strictEqual(acpTools.type === 'acp' && acpTools.name, ACP_CLIENT_TOOLS_MCP_NAME);
-		assert.ok(servers.some(server => server.type === 'stdio' && server.name === 'docs' && server.command === 'npx'));
+		assert.ok(servers.some(server => !('type' in server) && server.name === 'docs' && 'command' in server && server.command === 'npx'));
 
-		const connect = await agent.sendRequest<{ connectionId: string }>('mcp/connect', { acpId: acpTools.type === 'acp' ? acpTools.id : '' });
-		const listed = await agent.sendRequest<{ tools: { name: string }[] }>('mcp/message', {
+		const connect = await agent.request<{ connectionId: string }>('mcp/connect', { serverId: acpTools.type === 'acp' ? acpTools.serverId : '' });
+		const listed = await agent.request<{ tools: { name: string }[] }>('mcp/message', {
 			connectionId: connect.connectionId,
 			method: 'tools/list',
 		});
@@ -224,13 +270,55 @@ suite('ACP agent provider', () => {
 	});
 });
 
+suite('ACP auth and session load', () => {
+	const store = ensureNoDisposablesAreLeakedInTestSuite();
+	const definition = { id: 'acp-test', command: 'fake-acp', name: 'ACP Test' };
+
+	test('authenticate then loadSession on resume when the agent advertises both', async () => {
+		let fake: FakeAcpAgent;
+		const { client } = createLinkedAcpTransports(connection => fake = new FakeAcpAgent(connection, {
+			loadSession: true,
+			authMethods: [{ id: 'github', name: 'GitHub' }],
+		}));
+		store.add(client);
+		store.add(fake!);
+
+		const fileService = store.add(new FileService(new NullLogService()));
+		const provider = store.add(new AcpAgentProvider(
+			definition,
+			() => client,
+			new NullLogService(),
+			fileService as IFileService,
+			createConfigService(),
+		));
+		const session = AgentSession.uri(definition.id, 'session-resume');
+		const chat = URI.parse(buildDefaultChatUri(session.toString()));
+
+		assert.strictEqual(await provider.authenticate('github', 'token-1'), true);
+		assert.strictEqual(fake.authenticateCount, 1);
+		assert.strictEqual(fake.lastAuthMethodId, 'github');
+
+		await provider.materializeChat(chat, session, JSON.stringify({ acpSessionId: 'acp-resume-1', cwd: '/tmp' }));
+		assert.deepStrictEqual(fake.loadedSessionIds, ['acp-resume-1']);
+	});
+});
+
 suite('ACP client bridge permissions', () => {
 	const store = ensureNoDisposablesAreLeakedInTestSuite();
 
 	test('first AHP confirmation wins; later clients are ignored', async () => {
-		const { client, agent } = createLinkedAcpTransports();
+		const { client, agent } = createLinkedAcpTransports(() => ({
+			initialize: params => ({
+				protocolVersion: params.protocolVersion,
+				agentCapabilities: { loadSession: false },
+				authMethods: [],
+			}),
+			newSession: () => ({ sessionId: 'acp-1' }),
+			authenticate: () => { },
+			prompt: () => ({ stopReason: 'end_turn' }),
+			cancel: () => { },
+		}));
 		store.add(client);
-		store.add(agent);
 
 		const session = AgentSession.uri('acp-test', 'session-perm');
 		const chat = URI.parse(buildDefaultChatUri(session.toString()));
@@ -243,7 +331,6 @@ suite('ACP client bridge permissions', () => {
 		mapper.beginTurn('turn-1');
 		const pending = new DeferredPromise<IAgentToolPendingConfirmationSignal>();
 		const bridge = new AcpClientBridge(
-			client,
 			sessions,
 			mapper,
 			new ActiveClientToolSet(),
@@ -255,13 +342,11 @@ suite('ACP client bridge permissions', () => {
 			undefined,
 			() => ({ chat, turnId: 'turn-1' }),
 		);
-		store.add(client.onRequest(request => {
-			void bridge.handleRequest(request);
-		}));
+		client.setClient(bridge);
 
-		const permission = agent.sendRequest<{ outcome: { outcome: string; optionId?: string } }>('session/request_permission', {
+		const permission = agent.requestPermission({
 			sessionId: 'acp-1',
-			toolCall: { toolCallId: 'tc-perm', title: 'Run', kind: 'execute' },
+			toolCall: { toolCallId: 'tc-perm', title: 'Run', kind: 'execute', status: 'pending' },
 			options: [
 				{ optionId: 'allow_once', name: 'Allow', kind: 'allow_once' },
 				{ optionId: 'reject_once', name: 'Reject', kind: 'reject_once' },
@@ -282,8 +367,8 @@ suite('ACP MCP conversion', () => {
 			local: { type: McpServerType.LOCAL, command: 'uvx', args: ['server'], env: { TOKEN: 'x' } },
 			remote: { type: McpServerType.REMOTE, url: 'https://example.test/mcp' },
 		}), [
-			{ type: 'stdio', name: 'local', command: 'uvx', args: ['server'], env: [{ name: 'TOKEN', value: 'x' }] },
-			{ type: 'http', name: 'remote', url: 'https://example.test/mcp', headers: undefined },
+			{ name: 'local', command: 'uvx', args: ['server'], env: [{ name: 'TOKEN', value: 'x' }] },
+			{ type: 'http', name: 'remote', url: 'https://example.test/mcp', headers: [] },
 		]);
 	});
 });

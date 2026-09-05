@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as acp from '@agentclientprotocol/sdk';
 import { Emitter, Event } from '../../../../base/common/event.js';
 import { Disposable, DisposableStore } from '../../../../base/common/lifecycle.js';
 import { ResourceMap } from '../../../../base/common/map.js';
@@ -44,6 +45,7 @@ import { IAgentHostProviderService } from '../agentHostProviderService.js';
 import { ActiveClientToolSet } from '../activeClientState.js';
 import { AgentHostAcpAgentsEnvVar } from '../../common/agentService.js';
 import { IAcpAgentDefinition, parseAcpAgentDefinitions } from './acpAgentConfig.js';
+import { BUILTIN_ACP_AGENTS, mergeAcpAgentDefinitions } from './acpBuiltInAgents.js';
 import { AcpClientBridge } from './acpClientBridge.js';
 import { AcpEventMapper } from './acpEventMapper.js';
 import { AcpSessionManager } from './acpSessionManager.js';
@@ -53,10 +55,7 @@ import {
 	ACP_PROTOCOL_VERSION,
 	agentSupportsAcpMcp,
 	agentSupportsStdioMcp,
-	type IAcpInitializeResult,
 	type IAcpMcpServer,
-	type IAcpPromptContent,
-	type IAcpSessionUpdateParams,
 } from './acpTypes.js';
 
 export { AgentHostAcpAgentsEnvVar };
@@ -92,8 +91,8 @@ export class AcpAgentProvider extends Disposable implements IAgent {
 	readonly models: IObservable<readonly IAgentModelInfo[]> = this._models;
 
 	private _transport: IAcpTransport | undefined;
-	private _initialize: Promise<IAcpInitializeResult> | undefined;
-	private _initializeResult: IAcpInitializeResult | undefined;
+	private _initialize: Promise<acp.InitializeResponse> | undefined;
+	private _initializeResult: acp.InitializeResponse | undefined;
 	private _starting: Promise<AcpSessionManager> | undefined;
 	private _sessions: AcpSessionManager | undefined;
 	private _mapper: AcpEventMapper | undefined;
@@ -101,6 +100,7 @@ export class AcpAgentProvider extends Disposable implements IAgent {
 	private readonly _chats = new ResourceMap<IAcpChatRecord>();
 	private readonly _toolSet = new ActiveClientToolSet();
 	private readonly _activeClients = new ResourceMap<Map<string, IActiveClient>>();
+	private _authToken: string | undefined;
 
 	constructor(
 		private readonly _definition: IAcpAgentDefinition,
@@ -148,6 +148,13 @@ export class AcpAgentProvider extends Disposable implements IAgent {
 		});
 		if (data?.acpSessionId) {
 			const manager = await this._ensureSessions();
+			if (this._initializeResult?.agentCapabilities?.loadSession) {
+				await this._transport!.connection.loadSession({
+					sessionId: data.acpSessionId,
+					cwd: data.cwd ?? '',
+					mcpServers: this._mcpServersForNewSession(),
+				});
+			}
 			manager.bindRestored(chat, session, data.acpSessionId, data.cwd);
 			return { providerData };
 		}
@@ -237,7 +244,15 @@ export class AcpAgentProvider extends Disposable implements IAgent {
 		return [];
 	}
 
-	async authenticate(_resource: string, _token: string): Promise<boolean> {
+	async authenticate(_resource: string, token: string): Promise<boolean> {
+		this._authToken = token || undefined;
+		const manager = await this._ensureSessions();
+		void manager;
+		const methodId = pickAcpAuthMethodId(this._initializeResult?.authMethods ?? []);
+		if (!methodId) {
+			return true;
+		}
+		await this._transport!.connection.authenticate({ methodId });
 		return true;
 	}
 
@@ -291,13 +306,13 @@ export class AcpAgentProvider extends Disposable implements IAgent {
 		this._mapper!.beginTurn(resolvedTurnId);
 		await manager.beginTurn(acpSession, resolvedTurnId);
 		try {
-			const contents: IAcpPromptContent[] = [{ type: 'text', text: prompt }];
+			const contents: acp.PromptRequest['prompt'] = [{ type: 'text', text: prompt }];
 			if (attachments) {
 				for (const attachment of attachments) {
 					contents.push({ type: 'text', text: `\n[attachment] ${JSON.stringify(attachment)}` });
 				}
 			}
-			await this._transport!.sendRequest('session/prompt', {
+			await this._transport!.connection.prompt({
 				sessionId: acpSession.acpSessionId,
 				prompt: contents,
 			});
@@ -320,7 +335,7 @@ export class AcpAgentProvider extends Disposable implements IAgent {
 		if (!acpSession) {
 			return;
 		}
-		this._transport?.sendNotification('session/cancel', { sessionId: acpSession.acpSessionId });
+		await this._transport?.connection.cancel({ sessionId: acpSession.acpSessionId });
 	}
 
 	private async _ensureSessions(): Promise<AcpSessionManager> {
@@ -337,7 +352,13 @@ export class AcpAgentProvider extends Disposable implements IAgent {
 
 	private async _startSessions(): Promise<AcpSessionManager> {
 		const factory = this._transportFactory ?? spawnAcpTransport;
-		const transport = factory(this._definition);
+		const transport = factory({
+			...this._definition,
+			env: {
+				...this._definition.env,
+				...(this._authToken ? { GITHUB_TOKEN: this._authToken, GH_TOKEN: this._authToken } : {}),
+			},
+		});
 		this._register(transport);
 		this._transport = transport;
 		const mapper = new AcpEventMapper();
@@ -345,7 +366,7 @@ export class AcpAgentProvider extends Disposable implements IAgent {
 		const sessions = new AcpSessionManager(transport);
 		this._sessions = sessions;
 		const emit = (signal: AgentSignal) => this._onDidChatProgress.fire(signal);
-		const bridge = new AcpClientBridge(transport, sessions, mapper, this._toolSet, emit, this._fileService, () => {
+		const bridge = new AcpClientBridge(sessions, mapper, this._toolSet, emit, this._fileService, () => {
 			for (const record of this._chats.values()) {
 				const live = sessions.getByChat(record.chat);
 				if (live?.turnId) {
@@ -355,28 +376,13 @@ export class AcpAgentProvider extends Disposable implements IAgent {
 			return undefined;
 		});
 		this._bridge = bridge;
-		this._register(transport.onNotification(message => {
-			if (message.method !== 'session/update' || !mapper.isSessionUpdate(message.params)) {
-				return;
-			}
-			const params = message.params as IAcpSessionUpdateParams;
-			const live = sessions.getByAcpSessionId(params.sessionId);
-			if (!live?.turnId) {
-				return;
-			}
-			for (const signal of mapper.mapUpdate({ chat: live.chat, turnId: live.turnId }, params.update)) {
-				this._onDidChatProgress.fire(signal);
-			}
-		}));
-		this._register(transport.onRequest(request => {
-			void bridge.handleRequest(request);
-		}));
-		this._initialize = transport.sendRequest<IAcpInitializeResult>('initialize', {
+		transport.setClient(bridge);
+		this._initialize = transport.connection.initialize({
 			protocolVersion: ACP_PROTOCOL_VERSION,
 			clientCapabilities: {
 				fs: { readTextFile: true, writeTextFile: true },
 			},
-			clientInfo: { name: 'vscode-agent-host', title: 'VS Code Agent Host' },
+			clientInfo: { name: 'vscode-agent-host', title: 'VS Code Agent Host', version: '1.0.0' },
 		}).catch(error => {
 			this._logService.error('[AcpAgentProvider] initialize failed', error);
 			throw error;
@@ -390,7 +396,7 @@ export class AcpAgentProvider extends Disposable implements IAgent {
 		const init = this._initializeResult;
 		const includeAcpTools = !init || agentSupportsAcpMcp(init);
 		if (includeAcpTools && this._bridge) {
-			servers.push({ type: 'acp', name: ACP_CLIENT_TOOLS_MCP_NAME, id: this._bridge.clientToolsServerId });
+			servers.push({ type: 'acp', name: ACP_CLIENT_TOOLS_MCP_NAME, serverId: this._bridge.clientToolsServerId });
 		}
 		const configured = this._configurationService.getRootValue(platformRootSchema, AgentHostMcpServersConfigKey) ?? {};
 		if (!init || agentSupportsStdioMcp(init) || agentSupportsAcpMcp(init)) {
@@ -398,6 +404,15 @@ export class AcpAgentProvider extends Disposable implements IAgent {
 		}
 		return servers;
 	}
+}
+
+function pickAcpAuthMethodId(methods: readonly acp.AuthMethod[]): string | undefined {
+	for (const method of methods) {
+		if (!('type' in method) || method.type !== 'terminal') {
+			return method.id;
+		}
+	}
+	return undefined;
 }
 
 function encodeProviderData(data: IAcpProviderData): string {
@@ -428,26 +443,38 @@ export function toAcpMcpServers(configured: AgentHostMcpServers): IAcpMcpServer[
 }
 
 function toAcpMcpServer(name: string, config: IMcpServerConfiguration): IAcpMcpServer | undefined {
-	if (config.type === McpServerType.LOCAL) {
-		const env = config.env
-			? Object.entries(config.env)
-				.filter((entry): entry is [string, string] => typeof entry[1] === 'string')
-				.map(([envName, value]) => ({ name: envName, value }))
-			: undefined;
-		return { type: 'stdio', name, command: config.command, args: config.args, env };
+	switch (config.type) {
+		case McpServerType.LOCAL: {
+			const env = config.env
+				? Object.entries(config.env)
+					.filter((entry): entry is [string, string] => typeof entry[1] === 'string')
+					.map(([envName, value]) => ({ name: envName, value }))
+				: [];
+			return {
+				name,
+				command: config.command,
+				args: config.args ? [...config.args] : [],
+				env,
+			};
+		}
+		case McpServerType.REMOTE: {
+			const headers = config.headers
+				? Object.entries(config.headers).map(([headerName, value]) => ({ name: headerName, value }))
+				: [];
+			return { type: 'http', name, url: config.url, headers };
+		}
+		default: {
+			const _exhaustive: never = config;
+			void _exhaustive;
+			return undefined;
+		}
 	}
-	if (config.type === McpServerType.REMOTE) {
-		return { type: 'http', name, url: config.url, headers: config.headers };
-	}
-	return undefined;
 }
 
 export function resolveAcpAgentDefinitions(envValue: string | undefined, rootValue: unknown): IAcpAgentDefinition[] {
 	const fromEnv = parseAcpAgentDefinitions(envValue);
-	if (fromEnv.length > 0) {
-		return fromEnv;
-	}
-	return parseAcpAgentDefinitions(rootValue);
+	const user = fromEnv.length > 0 ? fromEnv : parseAcpAgentDefinitions(rootValue);
+	return mergeAcpAgentDefinitions(BUILTIN_ACP_AGENTS, user);
 }
 
 export function registerAcpAgentProviders(

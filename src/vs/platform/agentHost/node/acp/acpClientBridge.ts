@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as acp from '@agentclientprotocol/sdk';
 import { VSBuffer } from '../../../../base/common/buffer.js';
 import { DeferredPromise } from '../../../../base/common/async.js';
 import { URI } from '../../../../base/common/uri.js';
@@ -12,18 +13,15 @@ import type { AgentSignal } from '../../common/agent.js';
 import { ActionType } from '../../common/state/sessionActions.js';
 import { ToolCallConfirmationReason, ToolCallContributorKind, ToolResultContentType, type StringOrMarkdown, type ToolCallResult, type ToolDefinition } from '../../common/state/sessionState.js';
 import { ActiveClientToolSet } from '../activeClientState.js';
-import { AcpJsonRpcErrorCode } from './acpJsonRpc.js';
-import type { IAcpIncomingRequest, IAcpTransport } from './acpTransport.js';
 import { AcpEventMapper } from './acpEventMapper.js';
 import type { AcpSessionManager } from './acpSessionManager.js';
 import {
 	ACP_CLIENT_TOOLS_MCP_NAME,
-	type IAcpFsReadTextFileParams,
-	type IAcpFsWriteTextFileParams,
 	type IAcpMcpConnectParams,
 	type IAcpMcpMessageParams,
 	type IAcpPermissionOption,
 	type IAcpRequestPermissionParams,
+	type IAcpSessionUpdate,
 } from './acpTypes.js';
 
 export interface IAcpPermissionOutcome {
@@ -32,9 +30,8 @@ export interface IAcpPermissionOutcome {
 }
 
 interface IPendingPermission {
-	readonly requestId: string | number;
 	readonly toolCallId: string;
-	readonly options: IAcpRequestPermissionParams['options'];
+	readonly options: acp.RequestPermissionRequest['options'];
 	readonly deferred: DeferredPromise<IAcpPermissionOutcome>;
 }
 
@@ -42,14 +39,13 @@ interface IPendingPermission {
  * Handles ACP reverse requests: permissions (first AHP client wins),
  * filesystem methods, and MCP-over-ACP client-tool callbacks.
  */
-export class AcpClientBridge {
+export class AcpClientBridge implements acp.Client {
 	private readonly _pendingPermissions = new Map<string, IPendingPermission>();
 	private readonly _mcpConnections = new Map<string, string>();
-	private readonly _pendingClientTools = new Map<string, DeferredPromise<unknown>>();
+	private readonly _pendingClientTools = new Map<string, DeferredPromise<Record<string, unknown>>>();
 	private _clientToolsServerId: string | undefined;
 
 	constructor(
-		private readonly _transport: IAcpTransport,
 		private readonly _sessions: AcpSessionManager,
 		private readonly _mapper: AcpEventMapper,
 		private readonly _toolSet: ActiveClientToolSet,
@@ -63,19 +59,83 @@ export class AcpClientBridge {
 		return this._clientToolsServerId;
 	}
 
-	async handleRequest(request: IAcpIncomingRequest): Promise<void> {
-		try {
-			const result = await this._dispatch(request);
-			this._transport.sendResult(request.id, result);
-		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			this._transport.sendError(request.id, AcpJsonRpcErrorCode.InternalError, message);
-		}
-	}
-
 	/**
 	 * First confirmation for a given tool-call id wins; later AHP clients are ignored.
 	 */
+	async requestPermission(params: acp.RequestPermissionRequest): Promise<acp.RequestPermissionResponse> {
+		const session = this._sessions.getByAcpSessionId(params.sessionId);
+		if (!session?.turnId) {
+			return { outcome: { outcome: 'cancelled' } };
+		}
+		const { signals, toolCallId } = this._mapper.mapPermissionRequest(
+			{ chat: session.chat, turnId: session.turnId },
+			params as IAcpRequestPermissionParams,
+		);
+		const pending: IPendingPermission = {
+			toolCallId,
+			options: params.options,
+			deferred: new DeferredPromise<IAcpPermissionOutcome>(),
+		};
+		this._pendingPermissions.set(toolCallId, pending);
+		for (const signal of signals) {
+			this._emit(signal);
+		}
+		const outcome = await pending.deferred.p;
+		if (outcome.outcome === 'cancelled') {
+			return { outcome: { outcome: 'cancelled' } };
+		}
+		return { outcome: { outcome: 'selected', optionId: outcome.optionId ?? '' } };
+	}
+
+	sessionUpdate(params: acp.SessionNotification): void {
+		const session = this._sessions.getByAcpSessionId(params.sessionId);
+		if (!session?.turnId) {
+			return;
+		}
+		for (const signal of this._mapper.mapUpdate(
+			{ chat: session.chat, turnId: session.turnId },
+			params.update as IAcpSessionUpdate,
+		)) {
+			this._emit(signal);
+		}
+	}
+
+	async readTextFile(params: acp.ReadTextFileRequest): Promise<acp.ReadTextFileResponse> {
+		if (!this._fileService) {
+			throw new Error('Filesystem access is not available');
+		}
+		const file = await this._fileService.readFile(URI.file(params.path));
+		let text = file.value.toString();
+		if (params.line !== undefined || params.limit !== undefined) {
+			const lines = text.split(/\r?\n/);
+			const start = Math.max(0, (params.line ?? 1) - 1);
+			const end = params.limit !== undefined ? start + params.limit : lines.length;
+			text = lines.slice(start, end).join('\n');
+		}
+		return { content: text };
+	}
+
+	async writeTextFile(params: acp.WriteTextFileRequest): Promise<void> {
+		if (!this._fileService) {
+			throw new Error('Filesystem access is not available');
+		}
+		await this._fileService.writeFile(URI.file(params.path), VSBuffer.fromString(params.content));
+	}
+
+	extMethod(method: string, params: Record<string, unknown>): Promise<Record<string, unknown>> | Record<string, unknown> {
+		switch (method) {
+			case 'mcp/connect':
+				return this._handleMcpConnect(params as unknown as IAcpMcpConnectParams);
+			case 'mcp/disconnect':
+				this._mcpConnections.delete(typeof params.connectionId === 'string' ? params.connectionId : '');
+				return {};
+			case 'mcp/message':
+				return this._handleMcpMessage(params as unknown as IAcpMcpMessageParams);
+			default:
+				throw new Error(`Unhandled ACP reverse request: ${method}`);
+		}
+	}
+
 	respondToPermissionRequest(requestId: string, approved: boolean): boolean {
 		const pending = this._pendingPermissions.get(requestId);
 		if (!pending || pending.deferred.isSettled) {
@@ -99,80 +159,14 @@ export class AcpClientBridge {
 		return true;
 	}
 
-	private async _dispatch(request: IAcpIncomingRequest): Promise<unknown> {
-		switch (request.method) {
-			case 'session/request_permission':
-				return this._handlePermission(request);
-			case 'fs/read_text_file':
-				return this._handleReadTextFile(request.params as IAcpFsReadTextFileParams);
-			case 'fs/write_text_file':
-				return this._handleWriteTextFile(request.params as IAcpFsWriteTextFileParams);
-			case 'mcp/connect':
-				return this._handleMcpConnect(request.params as IAcpMcpConnectParams);
-			case 'mcp/disconnect':
-				this._mcpConnections.delete((request.params as { connectionId?: string })?.connectionId ?? '');
-				return {};
-			case 'mcp/message':
-				return this._handleMcpMessage(request.params as IAcpMcpMessageParams);
-			default:
-				throw new Error(`Unhandled ACP reverse request: ${request.method}`);
-		}
-	}
-
-	private async _handlePermission(request: IAcpIncomingRequest): Promise<{ outcome: { outcome: string; optionId?: string } }> {
-		const params = (request.params ?? {}) as IAcpRequestPermissionParams;
-		const session = this._sessions.getByAcpSessionId(params.sessionId);
-		if (!session?.turnId) {
-			return { outcome: { outcome: 'cancelled' } };
-		}
-		const { signals, toolCallId } = this._mapper.mapPermissionRequest({ chat: session.chat, turnId: session.turnId }, params);
-		const pending: IPendingPermission = {
-			requestId: request.id,
-			toolCallId,
-			options: params.options,
-			deferred: new DeferredPromise<IAcpPermissionOutcome>(),
-		};
-		this._pendingPermissions.set(toolCallId, pending);
-		for (const signal of signals) {
-			this._emit(signal);
-		}
-		const outcome = await pending.deferred.p;
-		if (outcome.outcome === 'cancelled') {
-			return { outcome: { outcome: 'cancelled' } };
-		}
-		return { outcome: { outcome: 'selected', optionId: outcome.optionId } };
-	}
-
-	private async _handleReadTextFile(params: IAcpFsReadTextFileParams): Promise<{ content: string }> {
-		if (!this._fileService) {
-			throw new Error('Filesystem access is not available');
-		}
-		const file = await this._fileService.readFile(URI.file(params.path));
-		let text = file.value.toString();
-		if (params.line !== undefined || params.limit !== undefined) {
-			const lines = text.split(/\r?\n/);
-			const start = Math.max(0, (params.line ?? 1) - 1);
-			const end = params.limit !== undefined ? start + params.limit : lines.length;
-			text = lines.slice(start, end).join('\n');
-		}
-		return { content: text };
-	}
-
-	private async _handleWriteTextFile(params: IAcpFsWriteTextFileParams): Promise<null> {
-		if (!this._fileService) {
-			throw new Error('Filesystem access is not available');
-		}
-		await this._fileService.writeFile(URI.file(params.path), VSBuffer.fromString(params.content));
-		return null;
-	}
-
 	private _handleMcpConnect(params: IAcpMcpConnectParams): { connectionId: string } {
+		const serverId = params.serverId ?? params.acpId ?? '';
 		const connectionId = generateUuid();
-		this._mcpConnections.set(connectionId, params.acpId);
+		this._mcpConnections.set(connectionId, serverId);
 		return { connectionId };
 	}
 
-	private async _handleMcpMessage(params: IAcpMcpMessageParams): Promise<unknown> {
+	private async _handleMcpMessage(params: IAcpMcpMessageParams): Promise<Record<string, unknown>> {
 		const acpId = this._mcpConnections.get(params.connectionId);
 		if (acpId !== this.clientToolsServerId && acpId !== ACP_CLIENT_TOOLS_MCP_NAME) {
 			throw new Error(`Unknown MCP-over-ACP connection: ${params.connectionId}`);
@@ -187,7 +181,7 @@ export class AcpClientBridge {
 		}
 	}
 
-	private async _callClientTool(params: IAcpMcpMessageParams): Promise<unknown> {
+	private async _callClientTool(params: IAcpMcpMessageParams): Promise<Record<string, unknown>> {
 		const call = (params.params ?? {}) as { name?: string; arguments?: unknown };
 		const toolName = call.name ?? '';
 		const owner = this._toolSet.ownerOf(toolName);
@@ -220,7 +214,7 @@ export class AcpClientBridge {
 				contributor: owner ? { kind: ToolCallContributorKind.Client, clientId: owner } : undefined,
 			},
 		});
-		const deferred = new DeferredPromise<unknown>();
+		const deferred = new DeferredPromise<Record<string, unknown>>();
 		this._pendingClientTools.set(toolCallId, deferred);
 		return deferred.p;
 	}

@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as acp from '@agentclientprotocol/sdk';
 import { URI } from '../../../../base/common/uri.js';
-import type { IAcpNewSessionResult } from './acpTypes.js';
 import type { IAcpTransport } from './acpTransport.js';
 
 export interface IAcpChatSession {
@@ -44,12 +44,12 @@ export class AcpSessionManager {
 		return this._byAhSession.get(session.toString());
 	}
 
-	async createAcpSession(chat: URI, session: URI, cwd: string | undefined, mcpServers: readonly unknown[]): Promise<IAcpChatSession> {
+	async createAcpSession(chat: URI, session: URI, cwd: string | undefined, mcpServers: acp.NewSessionRequest['mcpServers']): Promise<IAcpChatSession> {
 		const existing = this._byChat.get(chat.toString());
 		if (existing) {
 			return existing;
 		}
-		const result = await this._transport.sendRequest<IAcpNewSessionResult>('session/new', {
+		const result = await this._transport.connection.newSession({
 			cwd: cwd ?? '',
 			mcpServers,
 		});

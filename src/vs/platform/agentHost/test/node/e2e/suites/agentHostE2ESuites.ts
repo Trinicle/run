@@ -23,7 +23,6 @@ import { defineStateOperationsTests } from './stateOperationsSuite.js';
 import { defineSubagentTests } from './subagentSuite.js';
 import { defineTurnLifecycleTests } from './turnLifecycleSuite.js';
 import { defineWorkspaceTests } from './workspaceSuite.js';
-import { defineCopilotCoverageTests } from './copilotCoverageSuite.js';
 import { defineManagementExtensionTests } from './managementExtensionsSuite.js';
 import type { AgentHostE2ETier, IAgentHostE2ETestContext } from './e2eTestContext.js';
 
@@ -158,7 +157,6 @@ function defineSuite(config: IAgentHostE2EProviderConfig, options: IDefineOption
 		if (options.tier === 'parity') {
 			defineCoreTests(context);
 			defineHostFeaturesTests(context);
-			defineCopilotCoverageTests(context);
 			defineFileOperationsTests(context);
 			defineTurnLifecycleTests(context);
 			defineWorkspaceTests(context);

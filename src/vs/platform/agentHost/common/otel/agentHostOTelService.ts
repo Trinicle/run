@@ -3,17 +3,28 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import type { TelemetryConfig } from '@github/copilot-sdk';
 import type { URI } from '../../../../base/common/uri.js';
 import { createDecorator } from '../../../instantiation/common/instantiation.js';
 
+/**
+ * Host-owned telemetry exporter bag previously handed to in-process SDK
+ * clients. ACP agents read destinations through
+ * {@link IAgentHostNativeOTelConfig} instead.
+ */
+export interface TelemetryConfig {
+	readonly exporterType: 'otlp-http' | 'otlp-grpc' | 'console' | 'file';
+	readonly otlpEndpoint?: string;
+	readonly filePath?: string;
+	readonly sourceName?: string;
+	readonly captureContent?: boolean;
+}
 
 /**
- * Lean service that wires the @github/copilot-sdk telemetry hook to either:
+ * Lean service that wires agent-host telemetry to either:
  *
  *  - **External-only mode**: pass user-configured exporter settings straight through
- *    so the SDK's spawned CLI exports OTel data directly to the user's sink.
- *  - **DB mode** (`COPILOT_OTEL_DB_SPAN_EXPORTER_ENABLED=true`): point the SDK at a
+ *    so a spawned agent can export OTel data directly to the user's sink.
+ *  - **DB mode** (`COPILOT_OTEL_DB_SPAN_EXPORTER_ENABLED=true`): point exporters at a
  *    loopback OTLP/HTTP receiver, persist all spans into a local SQLite store, and
  *    optionally fan-out to a user-configured external sink as well.
  *
@@ -53,9 +64,9 @@ export interface IAgentHostOTelService {
 	readonly _serviceBrand: undefined;
 
 	/**
-	 * Returns the telemetry config to hand to `new CopilotClient({ telemetry })`,
-	 * starting the loopback receiver + store on first call when in DB mode.
-	 * Resolves to `undefined` when telemetry is disabled.
+	 * Returns the host-owned telemetry exporter bag, starting the loopback
+	 * receiver + store on first call when in DB mode. Resolves to `undefined`
+	 * when telemetry is disabled.
 	 */
 	getSdkTelemetryConfig(): Promise<TelemetryConfig | undefined>;
 

@@ -13,7 +13,21 @@ import { IFileService } from '../../../files/common/files.js';
 import { IAgentPluginManager } from '../../common/agentPluginManager.js';
 import { customizationId, type ClientPluginCustomization } from '../../common/state/sessionState.js';
 import { CustomizationType, type URI as ProtocolURI } from '../../common/state/protocol/state.js';
-import { DiscoveredType, type IDiscoveredDirectory } from '../copilot/sessionCustomizationDiscovery.js';
+const enum DiscoveredType {
+	Agent = 'agent',
+	Skill = 'skill',
+	Instruction = 'instruction',
+	Hook = 'hook',
+	AgentInstruction = 'agentInstruction',
+}
+
+interface IDiscoveredDirectory {
+	readonly uri: URI;
+	readonly type: DiscoveredType;
+	readonly name: string;
+	readonly writable: boolean;
+	readonly files: readonly { readonly uri: URI; readonly etag: string }[];
+}
 
 const DISPLAY_NAME = 'VS Code Synced Data';
 const HOST_DISCOVERY_DIR = 'host-discovery';
@@ -34,6 +48,10 @@ function pluginDirForType(type: DiscoveredType): string | undefined {
 		case DiscoveredType.Instruction: return 'rules';
 		case DiscoveredType.Hook: return 'hooks';
 		case DiscoveredType.AgentInstruction: return undefined;
+		default: {
+			const _exhaustive: never = type;
+			return _exhaustive;
+		}
 	}
 }
 

@@ -3,17 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import type { Attachment, SessionEvent, SessionEventPayload, SkillInvokedData, ToolExecutionCompleteContent } from '@github/copilot-sdk';
-
 // =============================================================================
 // Minimal session-event shapes for tests
 // =============================================================================
-// Production (`node/copilot/mapSessionEvents.ts`) consumes the real SDK
-// `SessionEvent` union. The SDK members require envelope fields the mapper
-// never reads (`parentId`, `timestamp`, `ephemeral`, …) plus stricter `data`
-// shapes, which makes hand-written event literals noisy. These ergonomic
-// subsets let tests construct only the fields the mapper actually reads; feed
-// them to the production mapper via {@link toSessionEvents}.
+// Used by mock-agent history fixtures. These are host-owned test shapes, not
+// vendor SDK events.
 
 export interface ISessionEventToolStart {
 	type: 'tool.execution_start';
@@ -43,9 +37,8 @@ export interface ISessionEventToolComplete {
 		toolCallId: string;
 		success: boolean;
 		result?: {
-			/** `content` is result text; `contents` are typed SDK result blocks such as `shell_exit`. */
 			content?: string;
-			contents?: ToolExecutionCompleteContent[];
+			contents?: unknown[];
 		};
 		error?: { message: string; code?: string };
 		isUserRequested?: boolean;
@@ -76,9 +69,9 @@ export interface ISessionEventMessage {
 		encryptedContent?: string;
 		/** @deprecated Use the envelope-level {@link ISessionEventMessage.agentId} instead. */
 		parentToolCallId?: string;
-		/** Origin of the message; a non-`'user'` value marks an SDK-injected message that should be hidden. */
+		/** Origin of the message; a non-`'user'` value marks an injected message that should be hidden. */
 		source?: string;
-		attachments?: readonly Attachment[];
+		attachments?: readonly unknown[];
 	};
 }
 
@@ -87,7 +80,7 @@ export interface ISessionEventSkillInvoked {
 	id?: string;
 	/** Envelope-level sub-agent instance id. */
 	agentId?: string;
-	data: SkillInvokedData;
+	data: { name?: string; skillName?: string };
 }
 
 export interface ISessionEventSubagentStarted {
@@ -127,7 +120,7 @@ export interface ISessionEventSystemNotification {
 	id?: string;
 	/** ISO 8601 envelope timestamp; the mapper uses it to restore turn timing. */
 	timestamp?: string;
-	data: SessionEventPayload<'system.notification'>['data'];
+	data?: unknown;
 }
 
 export interface ISessionEventError {
@@ -136,7 +129,7 @@ export interface ISessionEventError {
 	agentId?: string;
 	/** ISO 8601 envelope timestamp; the mapper uses it to restore turn timing. */
 	timestamp?: string;
-	data: SessionEventPayload<'session.error'>['data'];
+	data?: unknown;
 }
 
 /** Minimal event shape for session history mapping. */
@@ -151,14 +144,3 @@ export type ISessionEvent =
 	| ISessionEventSystemNotification
 	| ISessionEventError
 	| { type: string; agentId?: string; timestamp?: string; data?: unknown };
-
-/**
- * Widens ergonomic {@link ISessionEvent} test fixtures to the real SDK
- * {@link SessionEvent} union so they can be fed to the production
- * `mapSessionEvents`. The test shapes deliberately omit envelope fields the
- * mapper ignores (`parentId`, …), so this is a safe deliberate widening
- * rather than a representation of real SDK events.
- */
-export function toSessionEvents(events: readonly ISessionEvent[]): SessionEvent[] {
-	return events as unknown as SessionEvent[];
-}

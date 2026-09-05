@@ -10,9 +10,69 @@ import { stripRedundantCdPrefix } from '../../common/commandLineHelpers.js';
 import type { ToolKind } from '../../common/meta/agentToolCallMeta.js';
 import { IFileEditRecord, ISessionDatabase } from '../../common/sessionDataService.js';
 import { MessageKind, ResponsePartKind, ToolCallConfirmationReason, ToolCallStatus, ToolResultContentType, TurnState, buildSubagentSessionUri, type Message, type ResponsePart, type StringOrMarkdown, type ToolCallCompletedState, type ToolResultContent, type Turn } from '../../common/state/sessionState.js';
-import { getInvocationMessage, getPastTenseMessage, getShellLanguage, getSubagentMetadata, getToolDisplayName, getToolInputString, getToolKind, isEditTool, isHiddenTool, synthesizeSkillToolCall } from '../../node/copilot/copilotToolDisplay.js';
 import { buildSessionDbUri } from '../../common/sessionDbUri.js';
 import type { ISessionEvent, ISessionEventMessage, ISessionEventSkillInvoked, ISessionEventSubagentStarted, ISessionEventToolComplete, ISessionEventToolStart } from './copilotTestEvents.js';
+
+const HIDDEN_TOOLS = new Set(['report_intent', 'think']);
+const EDIT_TOOLS = new Set(['edit', 'str_replace', 'create', 'Write', 'Edit', 'apply_patch']);
+const TERMINAL_TOOLS = new Set(['bash', 'shell', 'powershell', 'terminal']);
+const SUBAGENT_TOOLS = new Set(['task', 'spawn', 'agent']);
+
+function isHiddenTool(toolName: string): boolean {
+	return HIDDEN_TOOLS.has(toolName);
+}
+
+function isEditTool(toolName: string, _command?: string): boolean {
+	return EDIT_TOOLS.has(toolName);
+}
+
+function getToolDisplayName(toolName: string): string {
+	return toolName;
+}
+
+function getToolKind(toolName: string, _parameters?: Record<string, unknown>): ToolKind | undefined {
+	if (TERMINAL_TOOLS.has(toolName)) {
+		return 'terminal';
+	}
+	if (SUBAGENT_TOOLS.has(toolName)) {
+		return 'subagent';
+	}
+	return undefined;
+}
+
+function getSubagentMetadata(parameters?: Record<string, unknown>): { agentName?: string; description?: string } {
+	return {
+		agentName: typeof parameters?.name === 'string' ? parameters.name : undefined,
+		description: typeof parameters?.description === 'string' ? parameters.description : undefined,
+	};
+}
+
+function getInvocationMessage(_toolName: string, displayName: string, _parameters?: Record<string, unknown>): string {
+	return displayName;
+}
+
+function getToolInputString(_toolName: string, _parameters: Record<string, unknown> | undefined, toolArgs?: string): string | undefined {
+	return toolArgs;
+}
+
+function getShellLanguage(_toolName: string): string {
+	return 'shellscript';
+}
+
+function getPastTenseMessage(_toolName: string, displayName: string, _parameters: Record<string, unknown> | undefined, success: boolean): string {
+	return success ? `Used ${displayName}` : `Failed ${displayName}`;
+}
+
+function synthesizeSkillToolCall(data: ISessionEventSkillInvoked['data'], id: string | undefined): { toolCallId: string; toolName: string; displayName: string; invocationMessage: string; pastTenseMessage: string } {
+	const name = data.name ?? 'skill';
+	return {
+		toolCallId: id ?? name,
+		toolName: 'skill',
+		displayName: name,
+		invocationMessage: name,
+		pastTenseMessage: `Invoked ${name}`,
+	};
+}
 
 // =============================================================================
 // History-record test fixtures
@@ -23,9 +83,8 @@ import type { ISessionEvent, ISessionEventMessage, ISessionEventSkillInvoked, IS
 // `subagent_started` — so transcripts read like the protocol they're
 // emulating.
 //
-// Production code does NOT depend on this module. The real
-// SDK-events-to-Turn[] pipeline in `node/copilot/mapSessionEvents.ts` runs
-// in a single pass without producing the intermediate record shape.
+// Production code does NOT depend on this module. Mock agents use these
+// records to build `Turn[]` without constructing protocol state by hand.
 // =============================================================================
 
 interface IHistoryRecordBase {
