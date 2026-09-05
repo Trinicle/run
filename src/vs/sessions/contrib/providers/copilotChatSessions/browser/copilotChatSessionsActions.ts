@@ -107,9 +107,8 @@ registerAction2(class extends Action2 {
  * Wraps a standalone picker widget as a {@link BaseActionViewItem}
  * so it can be rendered by a {@link MenuWorkbenchToolBar}.
  *
- * Exported so the web-only `CopilotPermissionPickerWebContribution`
- * (in `mobilePermissionPicker.contribution.ts`) can reuse the same
- * wrapper for its `MobilePermissionPicker` registration.
+ * Exported so session-config pickers can wrap a standalone picker widget
+ * as a {@link BaseActionViewItem} for {@link MenuWorkbenchToolBar}.
  */
 export class PickerActionViewItem extends BaseActionViewItem {
 	constructor(private readonly picker: { render(container: HTMLElement): void; dispose(): void }, disposable?: IDisposable) {
@@ -191,14 +190,10 @@ class CopilotPickerActionViewItemContribution extends Disposable implements IWor
 				return new PickerActionViewItem(picker, disposableStore);
 			},
 		));
-		// Permission picker registration is skipped on web so the
-		// web-only `CopilotPermissionPickerWebContribution` (registered
-		// from `sessions.web.main.ts`) can install the mobile-aware
-		// {@link MobilePermissionPicker} variant instead. On Electron
-		// desktop, register the standard {@link PermissionPicker}
-		// directly — the mobile-only sheet rendering never runs there
-		// and importing the mobile picker would needlessly drag
-		// `mobilePickerSheet.ts` into the desktop bundle.
+		// Permission picker: on Electron desktop register the standard
+		// {@link PermissionPicker}. Phone-layout sheet rendering never
+		// runs there, so the mobile picker is not imported into the
+		// desktop bundle.
 		if (!isWeb) {
 			this._register(actionViewItemService.register(
 				Menus.NewSessionControl, 'sessions.defaultCopilot.permissionPicker',

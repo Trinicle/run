@@ -13,7 +13,7 @@ import { CharCode } from '../../base/common/charCode.js';
 import { isSigPipeError, onUnexpectedError, setUnexpectedErrorHandler } from '../../base/common/errors.js';
 import { isEqualOrParent } from '../../base/common/extpath.js';
 import { Disposable, DisposableMap, DisposableStore } from '../../base/common/lifecycle.js';
-import { connectionTokenQueryName, FileAccess, getServerProductSegment, Schemas } from '../../base/common/network.js';
+import { FileAccess, getServerProductSegment, Schemas } from '../../base/common/network.js';
 import { dirname, join } from '../../base/common/path.js';
 import * as perf from '../../base/common/performance.js';
 import * as platform from '../../base/common/platform.js';
@@ -38,7 +38,7 @@ import { determineServerConnectionToken, requestHasValidConnectionToken as httpR
 import { IServerEnvironmentService, ServerParsedArgs } from './serverEnvironmentService.js';
 import { IServerLifetimeService } from './serverLifetimeService.js';
 import { setupServerServices, SocketServer } from './serverServices.js';
-import { CacheControl, serveError, serveFile, WebClientServer } from './webClientServer.js';
+import { CacheControl, serveError, serveFile } from './webClientServer.js';
 const require = createRequire(import.meta.url);
 
 function parseRequestUrl(requestUrl: string): URL | undefined {
@@ -78,7 +78,6 @@ class RemoteExtensionHostAgentServer extends Disposable implements IServerAPI {
 	private readonly _managementConnections: { [reconnectionToken: string]: ManagementConnection };
 	private readonly _allReconnectionTokens: Set<string>;
 	private readonly _extHostLifetimeTokens = this._register(new DisposableMap<string>());
-	private readonly _webClientServer: WebClientServer | null;
 	private readonly _webEndpointOriginChecker: WebEndpointOriginChecker;
 	private readonly _reconnectionGraceTime: number;
 
@@ -89,7 +88,6 @@ class RemoteExtensionHostAgentServer extends Disposable implements IServerAPI {
 		private readonly _socketServer: SocketServer<RemoteAgentConnectionContext>,
 		private readonly _connectionToken: ServerConnectionToken,
 		private readonly _vsdaMod: typeof vsda | null,
-		hasWebClient: boolean,
 		serverBasePath: string | undefined,
 		@IServerEnvironmentService private readonly _environmentService: IServerEnvironmentService,
 		@IProductService private readonly _productService: IProductService,
@@ -109,11 +107,6 @@ class RemoteExtensionHostAgentServer extends Disposable implements IServerAPI {
 		this._extHostConnections = Object.create(null);
 		this._managementConnections = Object.create(null);
 		this._allReconnectionTokens = new Set<string>();
-		this._webClientServer = (
-			hasWebClient
-				? this._instantiationService.createInstance(WebClientServer, this._connectionToken, serverBasePath ?? '/', this._serverProductPath)
-				: null
-		);
 		this._logService.info(`Extension host agent started.`);
 		this._reconnectionGraceTime = this._environmentService.reconnectionGraceTime;
 	}
@@ -197,12 +190,6 @@ class RemoteExtensionHostAgentServer extends Disposable implements IServerAPI {
 				responseHeaders['Access-Control-Allow-Origin'] = requestOrigin;
 			}
 			return serveFile(filePath, CacheControl.ETAG, this._logService, req, res, responseHeaders);
-		}
-
-		// workbench web UI
-		if (this._webClientServer) {
-			this._webClientServer.handle(req, res, parsedUrl, pathname);
-			return;
 		}
 
 		res.writeHead(404, { 'Content-Type': 'text/plain' });
@@ -736,15 +723,7 @@ export async function createServer(address: string | net.AddressInfo | null, arg
 		serverBasePath = `/${serverBasePath}`;
 	}
 
-	const hasWebClient = fs.existsSync(FileAccess.asFileUri(`vs/code/browser/workbench/workbench.html`).fsPath);
-
-	if (hasWebClient && address && typeof address !== 'string') {
-		// ships the web ui!
-		const queryPart = (connectionToken.type !== ServerConnectionTokenType.None ? `?${connectionTokenQueryName}=${connectionToken.value}` : '');
-		console.log(`Web UI available at http://localhost${address.port === 80 ? '' : `:${address.port}`}${serverBasePath ?? ''}${queryPart}`);
-	}
-
-	const remoteExtensionHostAgentServer = instantiationService.createInstance(RemoteExtensionHostAgentServer, socketServer, connectionToken, vsdaMod, hasWebClient, serverBasePath);
+	const remoteExtensionHostAgentServer = instantiationService.createInstance(RemoteExtensionHostAgentServer, socketServer, connectionToken, vsdaMod, serverBasePath);
 
 	perf.mark('code/server/ready');
 	const currentTime = performance.now();

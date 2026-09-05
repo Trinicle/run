@@ -52,7 +52,6 @@ Only code referenced from entry point files is loaded:
 
 - `workbench.common.main.ts` — shared dependencies
 - `workbench.desktop.main.ts` — desktop-only
-- `workbench.web.main.ts` — web-only
 
 ## Dependency Injection
 

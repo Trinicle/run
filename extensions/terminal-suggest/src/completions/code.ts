@@ -982,83 +982,6 @@ export const codeTunnelSubcommands: Fig.Subcommand[] = [
 		options: [...globalTunnelOptions, ...tunnelHelpOptions],
 	},
 	{
-		name: 'serve-web',
-		description: 'Runs a local web version of Code - OSS',
-		options: [
-			{
-				name: '--host',
-				description: 'Host to listen on, defaults to \'localhost\'',
-				isRepeatable: true,
-				args: {
-					name: 'host',
-					isOptional: true,
-				},
-			},
-			{
-				name: '--socket-path',
-				isRepeatable: true,
-				args: {
-					name: 'socket_path',
-					isOptional: true,
-				},
-			},
-			{
-				name: '--port',
-				description: 'Port to listen on. If 0 is passed a random free port is picked',
-				isRepeatable: true,
-				args: {
-					name: 'port',
-					isOptional: true,
-				},
-			},
-			{
-				name: '--connection-token',
-				description: 'A secret that must be included with all requests',
-				isRepeatable: true,
-				args: {
-					name: 'connection_token',
-					isOptional: true,
-				},
-			},
-			{
-				name: '--connection-token-file',
-				description: 'A file containing a secret that must be included with all requests',
-				isRepeatable: true,
-				args: {
-					name: 'connection_token_file',
-					isOptional: true,
-				},
-			},
-			{
-				name: '--server-base-path',
-				description: 'Specifies the path under which the web UI and the code server is provided',
-				isRepeatable: true,
-				args: {
-					name: 'server_base_path',
-					isOptional: true,
-				},
-			},
-			{
-				name: '--server-data-dir',
-				description: 'Specifies the directory that server data is kept in',
-				isRepeatable: true,
-				args: {
-					name: 'server_data_dir',
-					isOptional: true,
-				},
-			},
-			{
-				name: '--without-connection-token',
-				description: 'Run without a connection token. Only use this if the connection is secured by other means',
-			},
-			{
-				name: '--accept-server-license-terms',
-				description: 'If set, the user accepts the server license terms and the server will be started without a user prompt',
-			},
-			...globalTunnelOptions, ...tunnelHelpOptions,
-		]
-	},
-	{
 		name: 'help',
 		description: 'Print this message or the help of the given subcommand(s)',
 		subcommands: [
@@ -1149,10 +1072,6 @@ export const codeTunnelSubcommands: Fig.Subcommand[] = [
 						description: 'Shows the currently configured editor version',
 					},
 				],
-			},
-			{
-				name: 'serve-web',
-				description: 'Runs a local web version of Code - OSS',
 			},
 			{
 				name: 'agent',

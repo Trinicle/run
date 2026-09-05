@@ -33,9 +33,8 @@ suite('Server CLI agent command guard', () => {
 	test('stops at the first recognized subcommand', () => {
 		assert.deepStrictEqual([
 			hasAgentCommand(['chat', 'agent']),
-			hasAgentCommand(['serve-web', 'agent']),
 			hasAgentCommand(['tunnel', 'agent']),
-		], [false, false, false]);
+		], [false, false]);
 	});
 
 	test('does not detect agent after the option terminator', () => {

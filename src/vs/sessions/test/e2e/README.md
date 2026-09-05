@@ -4,6 +4,11 @@ Automated dogfooding tests for the Agent Sessions window using a
 **compile-and-replay** architecture powered by
 [`playwright-cli`](https://github.com/microsoft/playwright-cli) and Copilot CLI.
 
+> **Desktop-only:** these tests previously launched a browser Sessions workbench
+> via `scripts/code-sessions-web.js`. That harness is gone. `npm test` /
+> `npm run generate` currently fail until the runner is retargeted at the
+> Electron sessions window (`sessions.desktop.main`).
+
 ## Mocking Architecture
 
 These tests run the **real** Sessions workbench with only the minimal set of
@@ -172,16 +177,8 @@ e2e/
 
 Supporting files outside `e2e/`:
 
-```
-src/vs/sessions/test/
-├── web.test.ts              # TestSessionsBrowserMain + MockChatAgentContribution
-├── web.test.factory.ts      # Factory for test workbench (replaces web.factory.ts)
-└── sessions.web.test.internal.ts  # Test entry point
-
-scripts/
-├── code-sessions-web.js      # HTTP server that serves Sessions as a web app
-└── code-sessions-web.sh      # Shell wrapper
-```
+The previous browser test entry points (`web.test.ts`, `sessions.web.test.internal.ts`)
+and `scripts/code-sessions-web.*` were removed with the vscode-web product.
 
 ## Prerequisites
 

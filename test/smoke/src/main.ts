@@ -72,6 +72,11 @@ const opts = minimist(args, {
 	electronArgs?: string;
 };
 
+if (opts.web) {
+	console.error('vscode-web smoke tests were removed. Run Electron smoketests without --web.');
+	process.exit(1);
+}
+
 const logsRootPath = (() => {
 	const logsParentPath = path.join(rootPath, '.build', 'logs');
 

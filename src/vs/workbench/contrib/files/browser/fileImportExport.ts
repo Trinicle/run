@@ -6,7 +6,7 @@
 import { localize } from '../../../../nls.js';
 import { CancellationToken, CancellationTokenSource } from '../../../../base/common/cancellation.js';
 import { getFileNamesMessage, IConfirmation, IDialogService, IFileDialogService, IPromptButton } from '../../../../platform/dialogs/common/dialogs.js';
-import { ByteSize, FileSystemProviderCapabilities, IFileService, IFileStatWithMetadata } from '../../../../platform/files/common/files.js';
+import { ByteSize, FileSystemProviderCapabilities, IFileService } from '../../../../platform/files/common/files.js';
 import { INotificationService, Severity } from '../../../../platform/notification/common/notification.js';
 import { IProgress, IProgressService, IProgressStep, ProgressLocation } from '../../../../platform/progress/common/progress.js';
 import { IExplorerService } from './files.js';
@@ -23,16 +23,10 @@ import { IWorkspaceContextService } from '../../../../platform/workspace/common/
 import { extractEditorsAndFilesDropData } from '../../../../platform/dnd/browser/dnd.js';
 import { IWorkspaceEditingService } from '../../../services/workspaces/common/workspaceEditing.js';
 import { isWeb } from '../../../../base/common/platform.js';
-import { getActiveWindow, isDragEvent, triggerDownload } from '../../../../base/browser/dom.js';
-import { ILogService } from '../../../../platform/log/common/log.js';
+import { isDragEvent, triggerDownload } from '../../../../base/browser/dom.js';
 import { FileAccess, Schemas } from '../../../../base/common/network.js';
-import { listenStream } from '../../../../base/common/stream.js';
-import { DisposableStore, toDisposable } from '../../../../base/common/lifecycle.js';
-import { createSingleCallFunction } from '../../../../base/common/functional.js';
 import { coalesce } from '../../../../base/common/arrays.js';
-import { canceled } from '../../../../base/common/errors.js';
 import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
-import { WebFileSystemAccess } from '../../../../platform/files/browser/webFileSystemAccess.js';
 import { IInstantiationService } from '../../../../platform/instantiation/common/instantiation.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../platform/storage/common/storage.js';
 
@@ -584,17 +578,6 @@ export class ExternalFileImport {
 
 //#region Download (web, native)
 
-interface IDownloadOperation {
-	startTime: number;
-	progressScheduler: RunOnceWorker<IProgressStep>;
-
-	filesTotal: number;
-	filesDownloaded: number;
-
-	totalBytesDownloaded: number;
-	fileBytesDownloaded: number;
-}
-
 export class FileDownload {
 
 	private static readonly LAST_USED_DOWNLOAD_PATH_STORAGE_KEY = 'workbench.explorer.downloadPath';
@@ -603,7 +586,6 @@ export class FileDownload {
 		@IFileService private readonly fileService: IFileService,
 		@IExplorerService private readonly explorerService: IExplorerService,
 		@IProgressService private readonly progressService: IProgressService,
-		@ILogService private readonly logService: ILogService,
 		@IFileDialogService private readonly fileDialogService: IFileDialogService,
 		@IStorageService private readonly storageService: IStorageService
 	) {
@@ -649,7 +631,7 @@ export class FileDownload {
 		}
 	}
 
-	private async doDownloadBrowser(resource: URI, progress: IProgress<IProgressStep>, cts: CancellationTokenSource): Promise<void> {
+	private async doDownloadBrowser(resource: URI, _progress: IProgress<IProgressStep>, cts: CancellationTokenSource): Promise<void> {
 		const stat = await this.fileService.resolve(resource, { resolveMetadata: true });
 
 		if (cts.token.isCancellationRequested) {
@@ -657,40 +639,8 @@ export class FileDownload {
 		}
 
 		const maxBlobDownloadSize = 32 * ByteSize.MB; // avoid to download via blob-trick >32MB to avoid memory pressure
-		const preferFileSystemAccessWebApis = stat.isDirectory || stat.size > maxBlobDownloadSize;
 
-		// Folder: use FS APIs to download files and folders if available and preferred
-		const activeWindow = getActiveWindow();
-		if (preferFileSystemAccessWebApis && WebFileSystemAccess.supported(activeWindow)) {
-			try {
-				const parentFolder: FileSystemDirectoryHandle = await activeWindow.showDirectoryPicker();
-				const operation: IDownloadOperation = {
-					startTime: Date.now(),
-					progressScheduler: new RunOnceWorker<IProgressStep>(steps => { progress.report(steps[steps.length - 1]); }, 1000),
-
-					filesTotal: stat.isDirectory ? 0 : 1, // folders increment filesTotal within downloadFolder method
-					filesDownloaded: 0,
-
-					totalBytesDownloaded: 0,
-					fileBytesDownloaded: 0
-				};
-
-				if (stat.isDirectory) {
-					const targetFolder = await parentFolder.getDirectoryHandle(stat.name, { create: true });
-					await this.downloadFolderBrowser(stat, targetFolder, operation, cts.token);
-				} else {
-					await this.downloadFileBrowser(parentFolder, stat, operation, cts.token);
-				}
-
-				operation.progressScheduler.dispose();
-			} catch (error) {
-				this.logService.warn(error);
-				cts.cancel(); // `showDirectoryPicker` will throw an error when the user cancels
-			}
-		}
-
-		// File: use traditional download to circumvent browser limitations
-		else if (stat.isFile) {
+		if (stat.isFile) {
 			let bufferOrUri: Uint8Array | URI;
 			try {
 				bufferOrUri = (await this.fileService.readFile(stat.resource, { limits: { size: maxBlobDownloadSize } }, cts.token)).value.buffer;
@@ -702,117 +652,6 @@ export class FileDownload {
 				triggerDownload(bufferOrUri, stat.name);
 			}
 		}
-	}
-
-	private async downloadFileBufferedBrowser(resource: URI, target: FileSystemWritableFileStream, operation: IDownloadOperation, token: CancellationToken): Promise<void> {
-		const contents = await this.fileService.readFileStream(resource, undefined, token);
-		if (token.isCancellationRequested) {
-			target.close();
-			return;
-		}
-
-		return new Promise<void>((resolve, reject) => {
-			const sourceStream = contents.value;
-
-			const disposables = new DisposableStore();
-			disposables.add(toDisposable(() => target.close()));
-
-			disposables.add(createSingleCallFunction(token.onCancellationRequested)(() => {
-				disposables.dispose();
-				reject(canceled());
-			}));
-
-			listenStream(sourceStream, {
-				onData: data => {
-					target.write(data.buffer as Uint8Array<ArrayBuffer>);
-					this.reportProgress(contents.name, contents.size, data.byteLength, operation);
-				},
-				onError: error => {
-					disposables.dispose();
-					reject(error);
-				},
-				onEnd: () => {
-					disposables.dispose();
-					resolve();
-				}
-			}, token);
-		});
-	}
-
-	private async downloadFileUnbufferedBrowser(resource: URI, target: FileSystemWritableFileStream, operation: IDownloadOperation, token: CancellationToken): Promise<void> {
-		const contents = await this.fileService.readFile(resource, undefined, token);
-		if (!token.isCancellationRequested) {
-			target.write(contents.value.buffer as Uint8Array<ArrayBuffer>);
-			this.reportProgress(contents.name, contents.size, contents.value.byteLength, operation);
-		}
-
-		target.close();
-	}
-
-	private async downloadFileBrowser(targetFolder: FileSystemDirectoryHandle, file: IFileStatWithMetadata, operation: IDownloadOperation, token: CancellationToken): Promise<void> {
-
-		// Report progress
-		operation.filesDownloaded++;
-		operation.fileBytesDownloaded = 0; // reset for this file
-		this.reportProgress(file.name, 0, 0, operation);
-
-		// Start to download
-		const targetFile = await targetFolder.getFileHandle(file.name, { create: true });
-		const targetFileWriter = await targetFile.createWritable();
-
-		// For large files, write buffered using streams
-		if (file.size > ByteSize.MB) {
-			return this.downloadFileBufferedBrowser(file.resource, targetFileWriter, operation, token);
-		}
-
-		// For small files prefer to write unbuffered to reduce overhead
-		return this.downloadFileUnbufferedBrowser(file.resource, targetFileWriter, operation, token);
-	}
-
-	private async downloadFolderBrowser(folder: IFileStatWithMetadata, targetFolder: FileSystemDirectoryHandle, operation: IDownloadOperation, token: CancellationToken): Promise<void> {
-		if (folder.children) {
-			operation.filesTotal += (folder.children.map(child => child.isFile)).length;
-
-			for (const child of folder.children) {
-				if (token.isCancellationRequested) {
-					return;
-				}
-
-				if (child.isFile) {
-					await this.downloadFileBrowser(targetFolder, child, operation, token);
-				} else {
-					const childFolder = await targetFolder.getDirectoryHandle(child.name, { create: true });
-					const resolvedChildFolder = await this.fileService.resolve(child.resource, { resolveMetadata: true });
-
-					await this.downloadFolderBrowser(resolvedChildFolder, childFolder, operation, token);
-				}
-			}
-		}
-	}
-
-	private reportProgress(name: string, fileSize: number, bytesDownloaded: number, operation: IDownloadOperation): void {
-		operation.fileBytesDownloaded += bytesDownloaded;
-		operation.totalBytesDownloaded += bytesDownloaded;
-
-		const bytesDownloadedPerSecond = operation.totalBytesDownloaded / ((Date.now() - operation.startTime) / 1000);
-
-		// Small file
-		let message: string;
-		if (fileSize < ByteSize.MB) {
-			if (operation.filesTotal === 1) {
-				message = name;
-			} else {
-				message = localize('downloadProgressSmallMany', "{0} of {1} files ({2}/s)", operation.filesDownloaded, operation.filesTotal, ByteSize.formatSize(bytesDownloadedPerSecond));
-			}
-		}
-
-		// Large file
-		else {
-			message = localize('downloadProgressLarge', "{0} ({1} of {2}, {3}/s)", name, ByteSize.formatSize(operation.fileBytesDownloaded), ByteSize.formatSize(fileSize), ByteSize.formatSize(bytesDownloadedPerSecond));
-		}
-
-		// Report progress but limit to update only once per second
-		operation.progressScheduler.work({ message });
 	}
 
 	private async doDownloadNative(explorerItem: ExplorerItem, progress: IProgress<IProgressStep>, cts: CancellationTokenSource): Promise<void> {

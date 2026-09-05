@@ -11,15 +11,9 @@ npm i && npm run compile
 # Dev (Electron)
 npm run smoketest
 
-# Dev (Web - Must be run on distro)
-npm run smoketest -- --web --browser [chromium|webkit]
-
 # Build (Electron)
 npm run smoketest -- --build <path to latest version>
 example: npm run smoketest -- --build /Applications/Visual\ Studio\ Code\ -\ Insiders.app
-
-# Build (Web - read instructions below)
-npm run smoketest -- --build <path to server web build (ends in -web)> --web --browser [chromium|webkit]
 
 # Remote (Electron)
 npm run smoketest -- --build <path to latest version> --remote
@@ -39,24 +33,10 @@ cd test/smoke
 npm i
 ```
 
-#### Web
-
-There is no support for testing an old version to a new one yet.
-Instead, simply configure the `--build` command line argument to point to the absolute path of the extracted server web build folder (e.g. `<rest of path here>/vscode-server-darwin-x64-web` for macOS). The server web build is available from the builds page (see previous subsection).
-
-**macOS**: if you have downloaded the server with web bits, make sure to run the following command before unzipping it to avoid security issues on startup:
-
-```bash
-xattr -d com.apple.quarantine <path to server with web folder zip>
-```
-
-**Note**: make sure to point to the server that includes the client bits!
-
 ### Debug
 
 - `--verbose` logs all the low level driver calls made to Code;
 - `-f PATTERN` (alias `-g PATTERN`) filters the tests to be run. You can also use pretty much any mocha argument;
-- `--headless` will run playwright in headless mode when `--web` is used.
 
 **Note**: you can enable verbose logging of playwright library by setting a `DEBUG` environment variable before running the tests (<https://playwright.dev/docs/debug#verbose-api-logs>), for example to `pw:browser`.
 

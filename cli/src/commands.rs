@@ -16,7 +16,6 @@ pub mod agent_relay;
 pub mod agent_stop;
 pub mod args;
 pub mod output;
-pub mod serve_web;
 pub mod tunnels;
 pub mod update;
 pub mod version;

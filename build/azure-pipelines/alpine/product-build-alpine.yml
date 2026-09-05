@@ -26,14 +26,6 @@ jobs:
             sbomBuildDropPath: $(SERVER_DIR_PATH)
             sbomPackageName: "VS Code Alpine x64 Server"
             sbomPackageVersion: $(Build.SourceVersion)
-          # keep legacy name
-          - output: pipelineArtifact
-            targetPath: $(Build.ArtifactStagingDirectory)/out/web/vscode-server-linux-alpine-web.tar.gz
-            artifactName: vscode_web_linux_alpine_archive-unsigned
-            displayName: Publish x64 web server archive
-            sbomBuildDropPath: $(WEB_DIR_PATH)
-            sbomPackageName: "VS Code Alpine x64 Web"
-            sbomPackageVersion: $(Build.SourceVersion)
         - ${{ if ne(parameters.VSCODE_ARCH, 'x64') }}:
           - output: pipelineArtifact
             targetPath: $(Build.ArtifactStagingDirectory)/out/server/vscode-server-alpine-$(VSCODE_ARCH).tar.gz
@@ -41,13 +33,6 @@ jobs:
             displayName: Publish server archive
             sbomBuildDropPath: $(SERVER_DIR_PATH)
             sbomPackageName: "VS Code Alpine $(VSCODE_ARCH) Server"
-            sbomPackageVersion: $(Build.SourceVersion)
-          - output: pipelineArtifact
-            targetPath: $(Build.ArtifactStagingDirectory)/out/web/vscode-server-alpine-$(VSCODE_ARCH)-web.tar.gz
-            artifactName: vscode_web_alpine_$(VSCODE_ARCH)_archive-unsigned
-            displayName: Publish web server archive
-            sbomBuildDropPath: $(WEB_DIR_PATH)
-            sbomPackageName: "VS Code Alpine $(VSCODE_ARCH) Web"
             sbomPackageVersion: $(Build.SourceVersion)
         - output: pipelineArtifact
           targetPath: $(Build.SourcesDirectory)/.build/agent-sdk/tarballs
@@ -240,19 +225,3 @@ jobs:
           GITHUB_TOKEN: "$(github-token-code-oss)"
           AZURE_DEVOPS_EXT_PAT: $(System.AccessToken)
         displayName: Build server
-
-      - script: |
-          set -e
-          TARGET=$([ "$VSCODE_ARCH" == "x64" ] && echo "linux-alpine" || echo "alpine-arm64")
-          npm run gulp vscode-reh-web-$TARGET-min-ci
-          (cd .. && mv vscode-reh-web-$TARGET vscode-server-$TARGET-web) # TODO@joaomoreno
-          ARCHIVE_PATH="$(Build.ArtifactStagingDirectory)/out/web/vscode-server-$TARGET-web.tar.gz"
-          DIR_PATH="$(realpath ../vscode-server-$TARGET-web)"
-          mkdir -p $(dirname $ARCHIVE_PATH)
-          tar --owner=0 --group=0 -czf $ARCHIVE_PATH -C .. vscode-server-$TARGET-web
-          echo "##vso[task.setvariable variable=WEB_DIR_PATH]$DIR_PATH"
-          echo "##vso[task.setvariable variable=WEB_PATH]$ARCHIVE_PATH"
-        env:
-          GITHUB_TOKEN: "$(github-token-code-oss)"
-          AZURE_DEVOPS_EXT_PAT: $(System.AccessToken)
-        displayName: Build server (web)

@@ -97,20 +97,8 @@ function getSnapshot() {
 // Server management
 // ---------------------------------------------------------------------------
 
-function startServer(port, { mock = false } = {}) {
-	const args = ['--no-open', '--port', String(port)];
-	if (mock) { args.push('--mock'); }
-	const server = cp.spawn(process.execPath, [
-		path.join(APP_ROOT, 'scripts', 'code-sessions-web.js'),
-		...args,
-	], {
-		cwd: APP_ROOT,
-		stdio: ['ignore', 'pipe', 'pipe'],
-		env: { ...process.env },
-	});
-	server.stdout.on('data', () => { });
-	server.stderr.on('data', () => { });
-	return server;
+function startServer() {
+	throw new Error('The Sessions browser harness (scripts/code-sessions-web.js) was removed. Retarget these E2E tests to the Electron sessions window.');
 }
 
 async function waitForServer(url, timeoutMs) {

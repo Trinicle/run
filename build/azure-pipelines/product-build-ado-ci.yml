@@ -65,10 +65,6 @@ parameters:
     displayName: "🎯 macOS universal"
     type: boolean
     default: true
-  - name: VSCODE_BUILD_WEB
-    displayName: "🎯 Web"
-    type: boolean
-    default: true
   - name: VSCODE_USE_LEGACY_OSS_NOTICE
     displayName: "Use legacy OSS Notice"
     type: boolean
@@ -119,8 +115,6 @@ variables:
     value: ${{ or(eq(parameters.VSCODE_BUILD_ALPINE, true), eq(parameters.VSCODE_BUILD_ALPINE_ARM64, true)) }}
   - name: VSCODE_BUILD_STAGE_MACOS
     value: ${{ or(eq(parameters.VSCODE_BUILD_MACOS, true), eq(parameters.VSCODE_BUILD_MACOS_ARM64, true)) }}
-  - name: VSCODE_BUILD_STAGE_WEB
-    value: ${{ eq(parameters.VSCODE_BUILD_WEB, true) }}
   - name: VSCODE_PUBLISH_COUNTER_PREFIX
     value: $[format('{0:yyyyMMdd}-{1}-{2}', pipeline.startTime, variables['VSCODE_QUALITY'], variables['Build.SourceBranch'])]
   - name: VSCODE_PUBLISH_COUNTER
@@ -447,4 +441,3 @@ extends:
           - template: build/azure-pipelines/darwin/product-build-darwin-node-modules.yml@self
             parameters:
               VSCODE_ARCH: x64
-          - template: build/azure-pipelines/web/product-build-web-node-modules.yml@self

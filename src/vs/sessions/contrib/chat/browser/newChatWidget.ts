@@ -29,7 +29,6 @@ import { isAllowSignedOutWhenUsableEnabled, shouldShowGitHubWorkspaceGroupSignIn
 import { AGENTIC_SIGN_IN_COMMAND_ID } from '../../../common/sessionCommands.js';
 import { IAquariumService, IMountedToggleHandle } from '../../aquarium/browser/aquariumOverlay.js';
 import { IWorkspacePickerTrigger, WorkspacePicker } from './sessionWorkspacePicker.js';
-import { WebWorkspacePicker } from './webWorkspacePicker.js';
 import { IPreferredSessionType } from './sessionTypePicker.js';
 import { NewChatInputWidget } from './newChatInput.js';
 import { NoAgentHostEmptyState } from './noAgentHostEmptyState.js';
@@ -144,12 +143,8 @@ export class NewChatWidget extends Disposable {
 			return session?.isQuickChat?.read(reader) ?? false;
 		});
 
-		// On web (vscode.dev / insiders.vscode.dev), use {@link WebWorkspacePicker}
-		// which scopes recents to the active host and renders as a bottom
-		// sheet on phone-layout viewports. On Electron desktop, the regular
-		// {@link WorkspacePicker} is fine — phones never run there.
-		const PickerCtor = isWeb ? WebWorkspacePicker : WorkspacePicker;
-		this._workspacePicker = this._register(this.instantiationService.createInstance(PickerCtor, {
+		// On Electron desktop, the regular {@link WorkspacePicker} is used.
+		this._workspacePicker = this._register(this.instantiationService.createInstance(WorkspacePicker, {
 			canRestoreWorkspace: () => !this._isQuickChatComposer.get(),
 			getWorkspaceGroupAction: group => {
 				if (group === SESSION_WORKSPACE_GROUP_GITHUB && shouldShowGitHubWorkspaceGroupSignIn(

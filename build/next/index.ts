@@ -19,7 +19,6 @@ import packageJson from '../../package.json' with { type: 'json' };
 import { useEsbuildTranspile } from '../buildConfig.ts';
 import { isWebExtension, type IScannedBuiltinExtension } from '../lib/extensions.ts';
 import { runBuildFast } from './build-fast.ts';
-import { bundleDevTunnelsWeb } from './devTunnelsWeb.ts';
 import { copyFile, mapWithConcurrency, MAX_CONCURRENT_FILE_OPERATIONS, transpileFile } from './transpile.ts';
 
 const globAsync = promisify(glob);
@@ -52,12 +51,12 @@ const options = {
 	excludeTests: process.argv.includes('--exclude-tests'),
 	force: process.argv.includes('--force'),
 	out: getArgValue('--out'),
-	target: getArgValue('--target') ?? 'desktop', // 'desktop' | 'server' | 'server-web' | 'web'
+	target: getArgValue('--target') ?? 'desktop', // 'desktop' | 'server'
 	sourceMapBaseUrl: getArgValue('--source-map-base-url'),
 };
 
 // Build targets
-type BuildTarget = 'desktop' | 'server' | 'server-web' | 'web';
+type BuildTarget = 'desktop' | 'server';
 
 const SRC_DIR = 'src';
 const OUT_DIR = 'out';
@@ -115,24 +114,6 @@ const codeEntryPoints = [
 	'vs/sessions/electron-browser/sessions',
 ];
 
-// Web entry points (used in server-web and vscode-web)
-const webEntryPoints = [
-	'vs/workbench/workbench.web.main.internal',
-	'vs/code/browser/workbench/workbench',
-];
-
-// Additional web-only entry points (CDN build only, not in server-web)
-const sessionsWebEntryPoint = 'vs/sessions/sessions.web.main.internal';
-const webOnlyEntryPoints = [
-	sessionsWebEntryPoint,
-];
-
-const keyboardMapEntryPoints = [
-	'vs/workbench/services/keybinding/browser/keyboardLayouts/layout.contribution.linux',
-	'vs/workbench/services/keybinding/browser/keyboardLayouts/layout.contribution.darwin',
-	'vs/workbench/services/keybinding/browser/keyboardLayouts/layout.contribution.win',
-];
-
 // Server entry points (reh)
 const serverEntryPoints = [
 	'vs/workbench/api/node/extensionHostProcess',
@@ -171,20 +152,6 @@ function getEntryPointsForTarget(target: BuildTarget): string[] {
 			return [
 				...serverEntryPoints,
 			];
-		case 'server-web':
-			return [
-				...serverEntryPoints,
-				...workerEntryPoints,
-				...webEntryPoints,
-				...keyboardMapEntryPoints,
-			];
-		case 'web':
-			return [
-				...workerEntryPoints,
-				...webOnlyEntryPoints,
-				'vs/workbench/workbench.web.main.internal', // web workbench only (no browser shell)
-				...keyboardMapEntryPoints,
-			];
 		default:
 			throw new Error(`Unknown target: ${target}`);
 	}
@@ -198,10 +165,7 @@ function getBootstrapEntryPointsForTarget(target: BuildTarget): string[] {
 		case 'desktop':
 			return bootstrapEntryPointsDesktop;
 		case 'server':
-		case 'server-web':
 			return bootstrapEntryPointsServer;
-		case 'web':
-			return []; // Web has no bootstrap files (served by external server)
 		default:
 			throw new Error(`Unknown target: ${target}`);
 	}
@@ -221,16 +185,6 @@ function getCssBundleEntryPointsForTarget(target: BuildTarget): Set<string> {
 			]);
 		case 'server':
 			return new Set(); // Server has no UI
-		case 'server-web':
-			return new Set([
-				'vs/workbench/workbench.web.main.internal',
-				'vs/code/browser/workbench/workbench',
-			]);
-		case 'web':
-			return new Set([
-				'vs/workbench/workbench.web.main.internal',
-				'vs/sessions/sessions.web.main.internal',
-			]);
 		default:
 			throw new Error(`Unknown target: ${target}`);
 	}
@@ -330,63 +284,6 @@ const serverResourcePatterns = [
 	'vs/workbench/contrib/terminal/common/scripts/psreadline/netstd/*.dll',
 ];
 
-// Resources for server-web target (server + web UI)
-const serverWebResourcePatterns = [
-	...serverResourcePatterns,
-	...commonResourcePatterns,
-
-	// Web HTML
-	'vs/code/browser/workbench/workbench.html',
-	'vs/code/browser/workbench/workbench-dev.html',
-	'vs/code/browser/workbench/callback.html',
-	'vs/workbench/services/extensions/worker/webWorkerExtensionHostIframe.html',
-	'vs/workbench/contrib/webview/browser/pre/*.html',
-
-	// Webview pre scripts
-	'vs/workbench/contrib/webview/browser/pre/*.js',
-
-	// Media - audio
-	'vs/platform/accessibilitySignal/browser/media/*.mp3',
-	'vs/workbench/contrib/agentsVoice/browser/media/*.mp3',
-
-	// Media - images
-	'vs/workbench/contrib/welcomeGettingStarted/common/media/**/*.svg',
-	'vs/workbench/contrib/welcomeGettingStarted/common/media/**/*.png',
-	'vs/workbench/contrib/welcomeOnboarding/browser/media/*.svg',
-	'vs/workbench/contrib/extensions/browser/media/*.svg',
-	'vs/workbench/contrib/extensions/browser/media/*.png',
-	'vs/workbench/services/extensionManagement/common/media/*.svg',
-	'vs/workbench/services/extensionManagement/common/media/*.png',
-];
-
-// Resources for standalone web target (browser-only, no server)
-const webResourcePatterns = [
-	...commonResourcePatterns,
-
-	// Web HTML
-	'vs/code/browser/workbench/workbench.html',
-	'vs/code/browser/workbench/workbench-dev.html',
-	'vs/code/browser/workbench/callback.html',
-	'vs/workbench/services/extensions/worker/webWorkerExtensionHostIframe.html',
-	'vs/workbench/contrib/webview/browser/pre/*.html',
-
-	// Webview pre scripts
-	'vs/workbench/contrib/webview/browser/pre/*.js',
-
-	// Media - audio
-	'vs/platform/accessibilitySignal/browser/media/*.mp3',
-	'vs/workbench/contrib/agentsVoice/browser/media/*.mp3',
-
-	// Media - images
-	'vs/workbench/contrib/welcomeGettingStarted/common/media/**/*.svg',
-	'vs/workbench/contrib/welcomeGettingStarted/common/media/**/*.png',
-	'vs/workbench/contrib/welcomeOnboarding/browser/media/*.svg',
-	'vs/workbench/contrib/extensions/browser/media/*.svg',
-	'vs/workbench/contrib/extensions/browser/media/*.png',
-	'vs/workbench/services/extensionManagement/common/media/*.svg',
-	'vs/workbench/services/extensionManagement/common/media/*.png',
-];
-
 /**
  * Get resource patterns for a build target.
  */
@@ -396,12 +293,10 @@ function getResourcePatternsForTarget(target: BuildTarget): string[] {
 			return desktopResourcePatterns;
 		case 'server':
 			return serverResourcePatterns;
-		case 'server-web':
-			return serverWebResourcePatterns;
-		case 'web':
-			return webResourcePatterns;
-		default:
-			throw new Error(`Unknown target: ${target}`);
+		default: {
+			const _exhaustive: never = target;
+			throw new Error(`Unknown target: ${_exhaustive}`);
+		}
 	}
 }
 
@@ -622,7 +517,7 @@ function cssExternalPlugin(): esbuild.Plugin {
  * ensuring placeholders like `/*BUILD->INSERT_PRODUCT_CONFIGURATION* /` are replaced
  * before esbuild strips them as non-legal comments.
  */
-function fileContentMapperPlugin(outDir: string, target: BuildTarget): esbuild.Plugin {
+function fileContentMapperPlugin(outDir: string): esbuild.Plugin {
 	// Cache the replacement strings (computed once)
 	let productConfigReplacement: string | undefined;
 	let builtinExtensionsReplacement: string | undefined;
@@ -642,12 +537,8 @@ function fileContentMapperPlugin(outDir: string, target: BuildTarget): esbuild.P
 				// Inject product configuration
 				if (contents.includes('/*BUILD->INSERT_PRODUCT_CONFIGURATION*/')) {
 					if (productConfigReplacement === undefined) {
-						// For server-web, remove webEndpointUrlTemplate
-						const productForTarget = target === 'server-web'
-							? { ...product, webEndpointUrlTemplate: undefined }
-							: product;
 						const productConfiguration = JSON.stringify({
-							...productForTarget,
+							...product,
 							version,
 							commit,
 							date: readISODate(outDir)
@@ -662,9 +553,7 @@ function fileContentMapperPlugin(outDir: string, target: BuildTarget): esbuild.P
 				// Inject built-in extensions list
 				if (contents.includes('/*BUILD->INSERT_BUILTIN_EXTENSIONS*/')) {
 					if (builtinExtensionsReplacement === undefined) {
-						// Web target uses .build/web/extensions (from compileWebExtensionsBuildTask)
-						// Other targets use .build/extensions
-						const extensionsRoot = target === 'web' ? '.build/web/extensions' : '.build/extensions';
+						const extensionsRoot = '.build/extensions';
 						const builtinExtensions = JSON.stringify(scanBuiltinExtensions(extensionsRoot));
 						// Remove the outer brackets since the placeholder is inside an array literal
 						builtinExtensionsReplacement = builtinExtensions.substring(1, builtinExtensions.length - 1);
@@ -767,7 +656,7 @@ ${tslib}`,
 	const buildResults: { outPath: string; result: esbuild.BuildResult }[] = [];
 
 	// Create the file content mapper plugin (injects product config, builtin extensions)
-	const contentMapperPlugin = fileContentMapperPlugin(outDir, target);
+	const contentMapperPlugin = fileContentMapperPlugin(outDir);
 
 	// Bundle each entry point directly from TypeScript source
 	await Promise.all(allEntryPoints.map(async (entryPoint) => {
@@ -1018,13 +907,6 @@ ${tslib}`,
 	// Compile standalone TypeScript files (like Electron preload scripts) that cannot be bundled
 	await compileStandaloneFiles(outDir, doMinify, target);
 
-	if (allEntryPoints.includes(sessionsWebEntryPoint)) {
-		await bundleDevTunnelsWeb({
-			minify: doMinify,
-			outDir: path.join(outDir, 'vs', 'sessions', 'contrib', 'providers', 'remoteAgentHost', 'browser'),
-		});
-	}
-
 	console.log(`[bundle] Done in ${Date.now() - t1}ms (${bundled} bundles)`);
 }
 
@@ -1165,7 +1047,7 @@ Options for 'bundle':
 	--nls              Process NLS (localization) strings
 	--mangle-privates  Convert native #private fields to regular properties
 	--out <dir>        Output directory (default: out-vscode)
-	--target <target>  Build target: desktop (default), server, server-web, web
+	--target <target>  Build target: desktop (default), server
 	--source-map-base-url <url>  Rewrite sourceMappingURL to CDN URL
 
 Examples:
@@ -1179,7 +1061,6 @@ Examples:
 	npx tsx build/next/index.ts bundle --minify --nls
 	npx tsx build/next/index.ts bundle --nls --out out-vscode-min
 	npx tsx build/next/index.ts bundle --minify --nls --target server --out out-vscode-reh-min
-	npx tsx build/next/index.ts bundle --minify --nls --target server-web --out out-vscode-reh-web-min
 `);
 }
 

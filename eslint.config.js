@@ -1901,14 +1901,6 @@ export default defineConfig(
 						'vs/code/~',
 						{
 							'when': 'hasBrowser',
-							'pattern': 'vs/workbench/workbench.web.main.js'
-						},
-						{
-							'when': 'hasBrowser',
-							'pattern': 'vs/workbench/workbench.web.main.internal.js'
-						},
-						{
-							'when': 'hasBrowser',
 							'pattern': 'vs/workbench/~'
 						},
 						{
@@ -1980,40 +1972,6 @@ export default defineConfig(
 						'vs/workbench/contrib/terminal/terminal.all.js',
 						'vs/sessions/common/theme.js', // side-effect import for color registry
 						'vs/sessions/common/sizes.js' // side-effect import for size registry
-					]
-				},
-				{
-					'target': 'src/vs/workbench/workbench.web.main.ts',
-					'layer': 'browser',
-					'restrictions': [
-						'vs/base/~',
-						'vs/base/parts/*/~',
-						'vs/platform/*/~',
-						'vs/editor/~',
-						'vs/editor/contrib/*/~',
-						'vs/editor/editor.all.js',
-						'vs/workbench/~',
-						'vs/workbench/api/~',
-						'vs/workbench/services/*/~',
-						'vs/workbench/contrib/*/~',
-						'vs/workbench/workbench.common.main.js'
-					]
-				},
-				{
-					'target': 'src/vs/workbench/workbench.web.main.internal.ts',
-					'layer': 'browser',
-					'restrictions': [
-						'vs/base/~',
-						'vs/base/parts/*/~',
-						'vs/platform/*/~',
-						'vs/editor/~',
-						'vs/editor/contrib/*/~',
-						'vs/editor/editor.all.js',
-						'vs/workbench/~',
-						'vs/workbench/api/~',
-						'vs/workbench/services/*/~',
-						'vs/workbench/contrib/*/~',
-						'vs/workbench/workbench.web.main.js'
 					]
 				},
 				{
@@ -2103,78 +2061,6 @@ export default defineConfig(
 						'vs/workbench/services/*/~',
 						'vs/workbench/contrib/*/~',
 						'vs/sessions/sessions.common.main.js'
-					]
-				},
-				{
-					'target': 'src/vs/sessions/sessions.web.main.ts',
-					'layer': 'browser',
-					'restrictions': [
-						'vs/base/~',
-						'vs/base/parts/*/~',
-						'vs/platform/*/~',
-						'vs/editor/~',
-						'vs/editor/contrib/*/~',
-						'vs/editor/editor.all.js',
-						'vs/sessions/~',
-						'vs/sessions/services/*/~',
-						'vs/sessions/contrib/*/~',
-						'vs/sessions/contrib/providers/*/~',
-						'vs/workbench/~',
-						'vs/workbench/api/~',
-						'vs/workbench/services/*/~',
-						'vs/workbench/contrib/*/~',
-						'vs/sessions/sessions.common.main.js'
-					]
-				},
-				{
-					'target': 'src/vs/sessions/sessions.web.main.internal.ts',
-					'layer': 'browser',
-					'restrictions': [
-						'vs/base/~',
-						'vs/base/parts/*/~',
-						'vs/platform/*/~',
-						'vs/sessions/~',
-						'vs/sessions/contrib/*/~',
-						'vs/sessions/contrib/providers/*/~',
-						'vs/workbench/~',
-						'vs/workbench/browser/**',
-						'vs/workbench/services/*/~',
-						'vs/workbench/contrib/*/~',
-						'vs/sessions/sessions.web.main.js'
-					]
-				},
-				{
-					'target': 'src/vs/sessions/test/sessions.web.test.internal.ts',
-					'layer': 'browser',
-					'restrictions': [
-						'vs/base/~',
-						'vs/base/parts/*/~',
-						'vs/platform/*/~',
-						'vs/sessions/~',
-						'vs/sessions/test/**',
-						'vs/sessions/contrib/*/~',
-						'vs/sessions/contrib/providers/*/~',
-						'vs/workbench/~',
-						'vs/workbench/browser/**',
-						'vs/workbench/services/*/~',
-						'vs/workbench/contrib/*/~',
-						'vs/sessions/sessions.web.main.js'
-					]
-				},
-				{
-					'target': 'src/vs/sessions/test/{web.test.ts,web.test.factory.ts}',
-					'layer': 'browser',
-					'restrictions': [
-						'vs/base/~',
-						'vs/base/parts/*/~',
-						'vs/platform/*/~',
-						'vs/sessions/~',
-						'vs/sessions/test/**',
-						'vs/sessions/contrib/*/~',
-						'vs/workbench/~',
-						'vs/workbench/browser/**',
-						'vs/workbench/services/*/~',
-						'vs/workbench/contrib/*/~'
 					]
 				},
 				{

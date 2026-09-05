@@ -45,7 +45,7 @@ export type OptionDescriptions<T> = {
 	Subcommand<T[P]>
 };
 
-export const NATIVE_CLI_COMMANDS = ['tunnel', 'serve-web', 'agent'] as const;
+export const NATIVE_CLI_COMMANDS = ['tunnel', 'agent'] as const;
 
 export const OPTIONS: OptionDescriptions<Required<NativeParsedArgs>> = {
 	'chat': {
@@ -60,15 +60,6 @@ export const OPTIONS: OptionDescriptions<Required<NativeParsedArgs>> = {
 			'new-window': { type: 'boolean', cat: 'o', alias: 'n', description: localize('newWindowForChat', "Force to open an empty window for the chat session.") },
 			'profile': { type: 'string', 'cat': 'o', args: 'profileName', description: localize('profileName', "Opens the provided folder or workspace with the given profile and associates the profile with the workspace. If the profile does not exist, a new empty one is created.") },
 			'help': { type: 'boolean', alias: 'h', description: localize('help', "Print usage.") }
-		}
-	},
-	'serve-web': {
-		type: 'subcommand',
-		description: 'Run a server that displays the editor UI in browsers.',
-		options: {
-			'cli-data-dir': { type: 'string', args: 'dir', description: localize('cliDataDir', "Directory where CLI metadata should be stored.") },
-			'disable-telemetry': { type: 'boolean' },
-			'telemetry-level': { type: 'string' },
 		}
 	},
 	'agent': {

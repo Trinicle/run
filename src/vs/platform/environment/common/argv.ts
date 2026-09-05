@@ -23,7 +23,6 @@ export interface NativeParsedArgs {
 			};
 		};
 	};
-	'serve-web'?: INativeCliOptions;
 	'agent'?: INativeCliOptions;
 	chat?: {
 		_: string[];

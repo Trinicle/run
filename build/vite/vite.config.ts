@@ -190,8 +190,7 @@ export default defineConfig({
 		outDir: join(__dirname, 'dist'),
 		rollupOptions: {
 			input: {
-				//index: path.resolve(__dirname, 'index.html'),
-				workbench: path.resolve(__dirname, 'workbench-vite.html'),
+				index: path.resolve(__dirname, 'index.html'),
 			}
 		}
 	},

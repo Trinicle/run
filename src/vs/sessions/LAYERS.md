@@ -11,8 +11,7 @@ The sessions layer sits above `vs/workbench` in the VS Code source code hierarch
 ```
 ┌─────────────────────────────────────────────────────┐
 │  Entry Points                                       │
-│  sessions.common.main.ts / .desktop.main.ts /       │
-│  .web.main.ts / .web.main.internal.ts               │
+│  sessions.common.main.ts / .desktop.main.ts         │
 │  (can import everything below)                      │
 └──────────────────────┬──────────────────────────────┘
                        │
@@ -109,8 +108,6 @@ This is the **most permissive** contrib layer — providers can reach into non-p
 |------|-------|-------|
 | `sessions.common.main.ts` | `browser` | Shared contributions for all platforms |
 | `sessions.desktop.main.ts` | `electron-browser` | Desktop-specific, imports `sessions.common.main.js` |
-| `sessions.web.main.ts` | `browser` | Web-specific, imports `sessions.common.main.js` |
-| `sessions.web.main.internal.ts` | `browser` | Internal web variant, imports `sessions.web.main.js` |
 
 Entry points can import from all sessions layers: `sessions/~`, `services/*/~`, `contrib/*/~`, and `contrib/providers/*/~`.
 

@@ -3,6 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+/**
+ * Workbench construction options previously published as the vscode-web
+ * embedder API (`web.api.ts`). Desktop still reads these via
+ * `IBrowserWorkbenchEnvironmentService.options`.
+ */
+
 import type { PerformanceMark } from '../../base/common/performance.js';
 import type { UriComponents, URI } from '../../base/common/uri.js';
 import type { IWebSocketFactory } from '../../platform/remote/browser/browserSocketFactory.js';

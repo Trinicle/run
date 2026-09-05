@@ -734,8 +734,6 @@ function getPlatform(product: string, os: string, arch: string, type: string): s
 				}
 				case 'server':
 					return `server-win32-${arch}`;
-				case 'web':
-					return `server-win32-${arch}-web`;
 				case 'cli':
 					return `cli-win32-${arch}`;
 				default:
@@ -745,8 +743,6 @@ function getPlatform(product: string, os: string, arch: string, type: string): s
 			switch (product) {
 				case 'server':
 					return `server-alpine-${arch}`;
-				case 'web':
-					return `server-alpine-${arch}-web`;
 				case 'cli':
 					return `cli-alpine-${arch}`;
 				default:
@@ -762,11 +758,6 @@ function getPlatform(product: string, os: string, arch: string, type: string): s
 							return `linux-${arch}`;
 						case 'server':
 							return `server-linux-${arch}`;
-						case 'web':
-							if (arch === 'standalone') {
-								return 'web-standalone';
-							}
-							return `server-linux-${arch}-web`;
 						default:
 							throw new Error(`Unrecognized: ${product} ${os} ${arch} ${type}`);
 					}
@@ -797,11 +788,6 @@ function getPlatform(product: string, os: string, arch: string, type: string): s
 						return 'server-darwin';
 					}
 					return `server-darwin-${arch}`;
-				case 'web':
-					if (arch === 'x64') {
-						return 'server-darwin-web';
-					}
-					return `server-darwin-${arch}-web`;
 				case 'cli':
 					return `cli-darwin-${arch}`;
 				default:
@@ -976,7 +962,6 @@ async function main() {
 	if (e('VSCODE_BUILD_STAGE_LINUX') === 'True') { stages.add('Linux'); }
 	if (e('VSCODE_BUILD_STAGE_ALPINE') === 'True') { stages.add('Alpine'); }
 	if (e('VSCODE_BUILD_STAGE_MACOS') === 'True') { stages.add('macOS'); }
-	if (e('VSCODE_BUILD_STAGE_WEB') === 'True') { stages.add('Web'); }
 
 	let timeline: Timeline;
 	let artifacts: Artifact[];

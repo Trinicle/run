@@ -239,15 +239,6 @@ steps:
     - script: node build/azure-pipelines/common/smokeTestAgentHost.ts "$(Agent.BuildDirectory)/vscode-server-darwin-$(VSCODE_ARCH)"
       displayName: 🧪 Smoke test packaged Agent Host
 
-  - script: |
-      set -e
-      npm run gulp vscode-reh-web-darwin-$(VSCODE_ARCH)-min-ci
-      mv ../vscode-reh-web-darwin-$(VSCODE_ARCH) ../vscode-server-darwin-$(VSCODE_ARCH)-web # TODO@joaomoreno
-    env:
-      GITHUB_TOKEN: "$(github-token-code-oss)"
-      AZURE_DEVOPS_EXT_PAT: $(System.AccessToken)
-    displayName: Build server (web)
-
   - ${{ if ne(parameters.VSCODE_CIBUILD, true) }}:
     - script: npx deemon --attach -- node build/azure-pipelines/common/waitForArtifacts.ts "--producer=unsigned_vscode_cli_darwin_$(VSCODE_ARCH)_cli=macOS CLI (${{ upper(parameters.VSCODE_ARCH) }})" unsigned_vscode_cli_darwin_$(VSCODE_ARCH)_cli
       env:
@@ -327,7 +318,6 @@ steps:
         set -e
         export CODESIGN_IDENTITY=$(security find-identity -v -p codesigning $(agent.tempdirectory)/buildagent.keychain | grep -oEi "([0-9A-F]{40})" | head -n 1)
         node build/darwin/sign-server.ts $(Agent.BuildDirectory)/vscode-server-darwin-$(VSCODE_ARCH)
-        node build/darwin/sign-server.ts $(Agent.BuildDirectory)/vscode-server-darwin-$(VSCODE_ARCH)-web
       displayName: Sign server binaries
 
     - script: |
@@ -356,14 +346,6 @@ steps:
         (cd .. && zip -Xry $(Build.SourcesDirectory)/$ARCHIVE_PATH vscode-server-darwin-$(VSCODE_ARCH))
         echo "##vso[task.setvariable variable=SERVER_PATH]$ARCHIVE_PATH"
       displayName: Package server
-
-    - script: |
-        set -e
-        ARCHIVE_PATH=".build/darwin/server/vscode-server-darwin-$(VSCODE_ARCH)-web.zip"
-        mkdir -p $(dirname $ARCHIVE_PATH)
-        (cd .. && zip -Xry $(Build.SourcesDirectory)/$ARCHIVE_PATH vscode-server-darwin-$(VSCODE_ARCH)-web)
-        echo "##vso[task.setvariable variable=WEB_PATH]$ARCHIVE_PATH"
-      displayName: Package server (web)
 
     - task: UseDotNet@2
       inputs:
@@ -452,7 +434,4 @@ steps:
 
         mkdir -p $(Build.ArtifactStagingDirectory)/out/vscode_server_darwin_$(VSCODE_ARCH)_archive
         mv $(SERVER_PATH) $(Build.ArtifactStagingDirectory)/out/vscode_server_darwin_$(VSCODE_ARCH)_archive/vscode-server-darwin-$(VSCODE_ARCH).zip
-
-        mkdir -p $(Build.ArtifactStagingDirectory)/out/vscode_web_darwin_$(VSCODE_ARCH)_archive
-        mv $(WEB_PATH) $(Build.ArtifactStagingDirectory)/out/vscode_web_darwin_$(VSCODE_ARCH)_archive/vscode-server-darwin-$(VSCODE_ARCH)-web.zip
       displayName: Move artifacts to out directory

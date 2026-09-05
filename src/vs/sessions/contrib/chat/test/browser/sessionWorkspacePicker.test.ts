@@ -30,11 +30,9 @@ import { IUriIdentityService } from '../../../../../platform/uriIdentity/common/
 import { extUri } from '../../../../../base/common/resources.js';
 import { ISessionsProvidersChangeEvent, ISessionsProvidersService } from '../../../../services/sessions/browser/sessionsProvidersService.js';
 import { ISendRequestOptions, ISessionChangeEvent, ISessionsProvider } from '../../../../services/sessions/common/sessionsProvider.js';
-import { AgentHostFilterConnectionStatus, IAgentHostFilterEntry } from '../../../../services/agentHostFilter/common/agentHostFilter.js';
 import { IAgentHostSessionsProvider } from '../../../../common/agentHostSessionsProvider.js';
 import { ISession, ISessionWorkspace, ISessionWorkspaceBrowseAction, SESSION_WORKSPACE_GROUP_GITHUB, SESSION_WORKSPACE_GROUP_LOCAL, SESSION_WORKSPACE_GROUP_REMOTE } from '../../../../services/sessions/common/session.js';
 import { IWorkspacePickerItem, IWorkspacePickerOptions, WorkspacePicker } from '../../browser/sessionWorkspacePicker.js';
-import { WebWorkspacePicker } from '../../browser/webWorkspacePicker.js';
 import { NewSessionWorkspacePreselectionSource } from '../../browser/newSessionComposerService.js';
 import { ISessionsRecentWorkspacesService, SessionsRecentWorkspacesService } from '../../../../services/sessions/browser/sessionsRecentWorkspacesService.js';
 import { AutomationsWorkspacePicker } from '../../../automations/browser/automationDialog.js';
@@ -2975,32 +2973,6 @@ function createTestablePicker(
 	return disposables.add(instantiationService.createInstance(TestablePicker, options));
 }
 
-const buildWebWorkspacePickerItems = Reflect.get(WebWorkspacePicker.prototype, '_buildItems') as (this: {
-	readonly _agentHostFilterService: { readonly selectedHost: IAgentHostFilterEntry | undefined };
-	readonly sessionsProvidersService: ISessionsProvidersService;
-	readonly _directPickerAttachesContext: boolean | undefined;
-	readonly _directPickerGroup: string | undefined;
-	_getRecentWorkspaces(): Array<{ readonly workspace: ISessionWorkspace; readonly providerId: string }>;
-	_getAllBrowseActions(): ISessionWorkspaceBrowseAction[];
-	_isSelectedFolder(folderUri: URI): boolean;
-	_isProviderUnavailable(providerId: string): boolean;
-	_removeRecentWorkspace(folderUri: URI): void;
-}) => IActionListItem<IWorkspacePickerItem>[];
-
-/** An ungrouped host filter entry scoping to a single provider. */
-function hostEntry(providerId: string): IAgentHostFilterEntry {
-	return {
-		id: providerId,
-		providerIds: [providerId],
-		label: providerId,
-		grouped: false,
-		address: undefined,
-		icon: Codicon.remote,
-		status: AgentHostFilterConnectionStatus.Connected,
-		connectable: true,
-	};
-}
-
 suite('WorkspacePicker - Tab discovery', () => {
 
 	const disposables = new DisposableStore();
@@ -3105,44 +3077,6 @@ suite('WorkspacePicker - Tab discovery', () => {
 			itemLabels: ['Sign in to GitHub'],
 			executedCommands: [AGENTIC_SIGN_IN_COMMAND_ID],
 		});
-	});
-
-	test('web GitHub picker includes entries owned outside the selected execution host', () => {
-		const remoteProvider = createMockProvider('agenthost-remote-1');
-		const githubProvider = createMockProvider('default-copilot');
-		providersService.setProviders([remoteProvider, githubProvider]);
-		const repositoryUri = URI.parse('vscode-vfs://github/microsoft/vscode/HEAD');
-		const baseWorkspace = githubProvider.resolveWorkspace(URI.file('/copilot/repository'))!;
-		const repositoryWorkspace: ISessionWorkspace = {
-			...baseWorkspace,
-			uri: repositoryUri,
-			label: 'microsoft/vscode/HEAD',
-			group: SESSION_WORKSPACE_GROUP_GITHUB,
-			folders: baseWorkspace.folders.map(folder => ({ ...folder, root: repositoryUri, workingDirectory: repositoryUri })),
-		};
-		const repositoryAction = makeBrowseAction('default-copilot', SESSION_WORKSPACE_GROUP_GITHUB, 'Repository...');
-
-		const items = buildWebWorkspacePickerItems.call({
-			_agentHostFilterService: { selectedHost: hostEntry(remoteProvider.id) },
-			sessionsProvidersService: providersService,
-			_directPickerAttachesContext: false,
-			_directPickerGroup: SESSION_WORKSPACE_GROUP_GITHUB,
-			_getRecentWorkspaces: () => [{ workspace: { ...repositoryWorkspace, group: SESSION_WORKSPACE_GROUP_GITHUB }, providerId: githubProvider.id }],
-			_getAllBrowseActions: () => [repositoryAction],
-			_isSelectedFolder: () => false,
-			_isProviderUnavailable: () => false,
-			_removeRecentWorkspace: () => { },
-		});
-
-		assert.deepStrictEqual(items.map(item => ({
-			label: item.label,
-			providerId: item.item?.providerId,
-			browseActionIndex: item.item?.browseActionIndex,
-		})), [
-			{ label: 'microsoft/vscode/HEAD', providerId: 'default-copilot', browseActionIndex: undefined },
-			{ label: '', providerId: undefined, browseActionIndex: undefined },
-			{ label: 'Repository...', providerId: undefined, browseActionIndex: 0 },
-		]);
 	});
 
 	test('separates repository actions and recents from issue and pull request context', () => {

@@ -95,10 +95,6 @@ parameters:
     displayName: "🎯 macOS universal"
     type: boolean
     default: true
-  - name: VSCODE_BUILD_WEB
-    displayName: "🎯 Web"
-    type: boolean
-    default: true
   - name: VSCODE_PUBLISH
     displayName: "Publish to builds.code.visualstudio.com"
     type: boolean
@@ -164,8 +160,6 @@ variables:
     value: ${{ or(eq(parameters.VSCODE_BUILD_ALPINE, true), eq(parameters.VSCODE_BUILD_ALPINE_ARM64, true)) }}
   - name: VSCODE_BUILD_STAGE_MACOS
     value: ${{ or(eq(parameters.VSCODE_BUILD_MACOS, true), eq(parameters.VSCODE_BUILD_MACOS_ARM64, true)) }}
-  - name: VSCODE_BUILD_STAGE_WEB
-    value: ${{ eq(parameters.VSCODE_BUILD_WEB, true) }}
   - name: VSCODE_CIBUILD
     value: ${{ or(in(variables['Build.Reason'], 'IndividualCI', 'BatchedCI'), eq(parameters.VSCODE_BUILD_TYPE, 'CI')) }}
   - name: VSCODE_PUBLISH
@@ -514,12 +508,6 @@ extends:
             - ${{ if and(eq(variables['VSCODE_CIBUILD'], false), eq(variables['VSCODE_BUILD_MACOS_UNIVERSAL'], true)) }}:
               - template: build/azure-pipelines/darwin/product-build-darwin-universal.yml@self
 
-      - ${{ if and(eq(variables['VSCODE_CIBUILD'], false), eq(variables['VSCODE_BUILD_STAGE_WEB'], true)) }}:
-        - stage: Web
-          dependsOn: []
-          jobs:
-            - template: build/azure-pipelines/web/product-build-web.yml@self
-
       - ${{ if eq(variables['VSCODE_PUBLISH'], true) }}:
         - stage: Publish
           dependsOn: []
@@ -841,7 +829,6 @@ extends:
                     - vscode_client_darwin_x64_archive
                     - vscode_client_darwin_x64_dmg
                     - vscode_server_darwin_x64_archive
-                    - vscode_web_darwin_x64_archive
 
             - ${{ if eq(parameters.VSCODE_BUILD_MACOS_ARM64, true) }}:
               - template: build/azure-pipelines/common/sanity-tests.yml@self
@@ -857,7 +844,6 @@ extends:
                     - vscode_client_darwin_arm64_archive
                     - vscode_client_darwin_arm64_dmg
                     - vscode_server_darwin_arm64_archive
-                    - vscode_web_darwin_arm64_archive
 
             - ${{ if eq(variables['VSCODE_BUILD_MACOS_UNIVERSAL'], true) }}:
               - template: build/azure-pipelines/common/sanity-tests.yml@self
@@ -898,7 +884,6 @@ extends:
                     - vscode_client_win32_x64_setup
                     - vscode_client_win32_x64_user-setup
                     - vscode_server_win32_x64_archive
-                    - vscode_web_win32_x64_archive
 
             - ${{ if eq(parameters.VSCODE_BUILD_WIN32_ARM64, true) }}:
               - template: build/azure-pipelines/common/sanity-tests.yml@self
@@ -918,7 +903,6 @@ extends:
                     - vscode_client_win32_arm64_setup
                     - vscode_client_win32_arm64_user-setup
                     - vscode_server_win32_arm64_archive
-                    - vscode_web_win32_arm64_archive
 
       # The SDK ships linuxmusl prebuilds that only the Alpine jobs exercise.
       - ${{ if and(eq(parameters.VSCODE_RUN_ARTIFACT_SANITY_TESTS, true), eq(variables['VSCODE_BUILD_STAGE_ALPINE'], true)) }}:
@@ -945,7 +929,6 @@ extends:
                   artifacts:
                     - vscode_cli_alpine_x64_cli
                     - vscode_server_linux_alpine_archive-unsigned
-                    - vscode_web_linux_alpine_archive-unsigned
 
             - ${{ if eq(parameters.VSCODE_BUILD_ALPINE_ARM64, true) }}:
               - template: build/azure-pipelines/common/sanity-tests.yml@self
@@ -960,7 +943,6 @@ extends:
                   artifacts:
                     - vscode_cli_alpine_arm64_cli
                     - vscode_server_alpine_arm64_archive-unsigned
-                    - vscode_web_alpine_arm64_archive-unsigned
 
       # rpm targets are excluded, there is no dnf/yum on the Ubuntu hosts.
       - ${{ if and(eq(parameters.VSCODE_RUN_ARTIFACT_SANITY_TESTS, true), eq(variables['VSCODE_BUILD_STAGE_LINUX'], true)) }}:
@@ -989,7 +971,6 @@ extends:
                     - vscode_client_linux_x64_deb-package
                     - vscode_client_linux_x64_snap
                     - vscode_server_linux_x64_archive-unsigned
-                    - vscode_web_linux_x64_archive-unsigned
 
             - ${{ if eq(parameters.VSCODE_BUILD_LINUX_ARM64, true) }}:
               - template: build/azure-pipelines/common/sanity-tests.yml@self
@@ -1006,7 +987,6 @@ extends:
                     - vscode_client_linux_arm64_archive-unsigned
                     - vscode_client_linux_arm64_deb-package
                     - vscode_server_linux_arm64_archive-unsigned
-                    - vscode_web_linux_arm64_archive-unsigned
 
             - ${{ if eq(parameters.VSCODE_BUILD_LINUX_ARMHF, true) }}:
               - template: build/azure-pipelines/common/sanity-tests.yml@self
@@ -1076,7 +1056,6 @@ extends:
             - template: build/azure-pipelines/darwin/product-build-darwin-node-modules.yml@self
               parameters:
                 VSCODE_ARCH: x64
-            - template: build/azure-pipelines/web/product-build-web-node-modules.yml@self
 
       - ${{ if eq(variables['VSCODE_CIBUILD'], false) }}:
         - stage: APIScan

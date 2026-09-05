@@ -197,7 +197,6 @@ task.task(task.define('core-ci-old', task.series(
 	task.parallel(
 		task.task('minify-vscode') as task.Task,
 		task.task('minify-vscode-reh') as task.Task,
-		task.task('minify-vscode-reh-web') as task.Task,
 	)
 )));
 
@@ -214,7 +213,6 @@ task.task(task.define('core-ci', task.series(
 	task.parallel(
 		task.define('esbuild-vscode-min', () => runEsbuildBundle('out-vscode-min', true, true, 'desktop', `${sourceMappingURLBase}/core`)),
 		task.define('esbuild-vscode-reh-min', () => runEsbuildBundle('out-vscode-reh-min', true, true, 'server', `${sourceMappingURLBase}/core`)),
-		task.define('esbuild-vscode-reh-web-min', () => runEsbuildBundle('out-vscode-reh-web-min', true, true, 'server-web', `${sourceMappingURLBase}/core`)),
 	)
 )));
 

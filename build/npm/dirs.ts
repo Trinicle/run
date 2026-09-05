@@ -53,9 +53,7 @@ export const dirs = [
 	'extensions/vscode-colorize-perf-tests',
 	'extensions/vscode-test-resolver',
 	'remote',
-	'remote/web',
 	'test/automation',
-	'test/integration/browser',
 	'test/monaco',
 	'test/smoke',
 	'test/scenario',
@@ -69,5 +67,4 @@ export const dirs = [
 if (existsSync(`${import.meta.dirname}/../../.build/distro/npm`)) {
 	dirs.push('.build/distro/npm');
 	dirs.push('.build/distro/npm/remote');
-	dirs.push('.build/distro/npm/remote/web');
 }

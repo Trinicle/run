@@ -18,11 +18,11 @@ To test changes:
 # Test transpile
 node build/next/index.ts transpile --out out-test
 
-# Test bundle (server-web target to test the auth fix)
-node build/next/index.ts bundle --nls --target server-web --out out-vscode-reh-web-test
+# Test bundle (desktop target)
+node build/next/index.ts bundle --nls --target desktop --out out-vscode-test
 
 # Verify product config was injected
-grep -l "serverLicense" out-vscode-reh-web-test/vs/code/browser/workbench/workbench.js
+grep -l "serverLicense" out-vscode-test/vs/code/electron-browser/workbench/workbench.js
 ```
 
 ---
@@ -93,18 +93,18 @@ Two placeholders that need injection:
 | `/*BUILD->INSERT_PRODUCT_CONFIGURATION*/` | `src/vs/platform/product/common/product.ts` | Product config (commit, version, serverLicense, etc.) |
 | `/*BUILD->INSERT_BUILTIN_EXTENSIONS*/` | `src/vs/workbench/services/extensionManagement/browser/builtinExtensionsScannerService.ts` | List of built-in extensions |
 
-### 4. Server-web Target Specifics
+### 4. Server Target Specifics
 
-- Removes `webEndpointUrlTemplate` from product config (see `tweakProductForServerWeb` in old build)
-- Uses `.build/extensions` for builtin extensions (not `.build/web/extensions`)
+- Server (`reh`) is a headless remote extension host; there is no browser workbench target.
+- Uses `.build/extensions` for builtin extensions
 
 ### 5. Entry Point Parity with Old Build
 
 **Problem:** The desktop target had `keyboardMapEntryPoints` as separate esbuild entry points, producing `layout.contribution.darwin.js`, `layout.contribution.linux.js`, and `layout.contribution.win.js` as standalone files in the output.
 
-**Root cause:** In the old build (`gulpfile.vscode.ts`), `vscodeEntryPoints` does NOT include `buildfile.keyboardMaps`. These files are only separate entry points for server-web (`gulpfile.reh.ts`) and web (`gulpfile.vscode.web.ts`). For desktop, they're imported as dependencies of `workbench.desktop.main` and get bundled into it.
+**Root cause:** In the old build (`gulpfile.vscode.ts`), `vscodeEntryPoints` does NOT include `buildfile.keyboardMaps`. For desktop, they're imported as dependencies of `workbench.desktop.main` and get bundled into it.
 
-**Fix:** Removed `...keyboardMapEntryPoints` from the `desktop` case in `getEntryPointsForTarget()`. Keep for `server-web` and `web`.
+**Fix:** Removed `...keyboardMapEntryPoints` from the `desktop` case in `getEntryPointsForTarget()`.
 
 **Lesson:** Always verify new build entry points against the old build's per-target definitions in `buildfile.ts` and the respective gulpfiles.
 
@@ -135,16 +135,11 @@ Two placeholders that need injection:
 ## Testing the Fix
 
 ```bash
-# Build server-web with new system
-node build/next/index.ts bundle --nls --target server-web --out out-vscode-reh-web-min
+# Build desktop with new system
+node build/next/index.ts bundle --nls --target desktop --out out-vscode-min
 
 # Package it (uses gulp task)
-npm run gulp vscode-reh-web-darwin-arm64-min
-
-# Run server
-./vscode-server-darwin-arm64-web/bin/code-server-oss --connection-token dev-token
-
-# Open browser - should connect without "Unauthorized client refused"
+npm run gulp vscode-win32-x64-min
 ```
 
 ---

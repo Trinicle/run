@@ -11,7 +11,7 @@ import { IProgressService, ProgressLocation, } from '../../../../../platform/pro
 import { INotificationService, Severity } from '../../../../../platform/notification/common/notification.js';
 import { IFileService, FileKind, FileOperationError, FileOperationResult, FileChangeType, FileSystemProviderCapabilities } from '../../../../../platform/files/common/files.js';
 import { IWorkbenchLayoutService } from '../../../../services/layout/browser/layoutService.js';
-import { isTemporaryWorkspace, IWorkspaceContextService, WorkbenchState } from '../../../../../platform/workspace/common/workspace.js';
+import { IWorkspaceContextService, WorkbenchState } from '../../../../../platform/workspace/common/workspace.js';
 import { IDisposable, Disposable, dispose, toDisposable, DisposableStore } from '../../../../../base/common/lifecycle.js';
 import { KeyCode } from '../../../../../base/common/keyCodes.js';
 import { IFileLabelOptions, IResourceLabel, ResourceLabels } from '../../../../browser/labels.js';
@@ -56,7 +56,6 @@ import { ResourceFileEdit } from '../../../../../editor/browser/services/bulkEdi
 import { IExplorerService } from '../files.js';
 import { BrowserFileUpload, ExternalFileImport, getMultipleFilesOverwriteConfirm } from '../fileImportExport.js';
 import { toErrorMessage } from '../../../../../base/common/errorMessage.js';
-import { WebFileSystemAccess } from '../../../../../platform/files/browser/webFileSystemAccess.js';
 import { IgnoreFile } from '../../../../services/search/common/ignoreFile.js';
 import { ResourceSet } from '../../../../../base/common/map.js';
 import { TernarySearchTree } from '../../../../../base/common/ternarySearchTree.js';
@@ -1813,7 +1812,7 @@ export class FileDragAndDrop implements ITreeDragAndDrop<ExplorerItem> {
 			// External file DND (Import/Upload file)
 			if (data instanceof NativeDragAndDropData) {
 				// Use local file import when supported
-				if (!isWeb || (isTemporaryWorkspace(this.contextService.getWorkspace()) && WebFileSystemAccess.supported(mainWindow))) {
+				if (!isWeb) {
 					const fileImport = this.instantiationService.createInstance(ExternalFileImport);
 					await fileImport.import(resolvedTarget, originalEvent, mainWindow);
 				}

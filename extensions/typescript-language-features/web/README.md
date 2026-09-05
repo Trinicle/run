@@ -1,20 +1,18 @@
 # vscode-wasm-typescript
 
-Language server host for typescript using vscode's sync-api in the browser.
+Language server host for typescript using vscode's sync-api in a web worker.
 
 ## Getting up and running
 
-To test this out, you'll need three shells:
+To test this out, you'll need:
 
 1. `npm i` for vscode itself
-2. `npm run watch-web` for the web side
-3. `node <root>/scripts/code-web.js --coi`
+2. `npm run watch-web` for extension `browser` bundles (used by desktop `LocalWebWorker`)
+3. Launch the Electron desktop app (`scripts/code.bat` / `scripts/code.sh`)
 
-The last command will open a browser window. You'll want to add `?vscode-coi=`
-to the end. This is for enabling shared array buffers. So, for example:
-`http://localhost:8080/?vscode-coi=`.
+There is no vscode-web / `code-web.js` product. Type acquisition and the simulated `node_modules` file systems still run inside the web worker extension host of the desktop app.
 
-### Working on type acquisition
+### Working on type acquisitionwhat
 
 In order to work with web's new type acquisition, you'll need to enable
 `TypeScript > Experimental > Tsserver > Web: Enable Project Wide Intellisense`

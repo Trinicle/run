@@ -10,7 +10,7 @@ use clap::Parser;
 use cli::{
 	commands::{
 		agent_endpoints, agent_host, agent_kill, agent_logs, agent_ps, agent_relay, agent_stop,
-		args, serve_web, tunnels, update, version, CommandContext,
+		args, tunnels, update, version, CommandContext,
 	},
 	constants::get_default_user_agent,
 	desktop, log,
@@ -98,10 +98,6 @@ async fn main() -> Result<(), std::convert::Infallible> {
 
 			Some(args::Commands::CommandShell(cs_args)) => {
 				tunnels::command_shell(context!(), cs_args).await
-			}
-
-			Some(args::Commands::ServeWeb(sw_args)) => {
-				serve_web::serve_web(context!(), sw_args).await
 			}
 
 			Some(args::Commands::Agent(agent_args)) => match agent_args.subcommand {

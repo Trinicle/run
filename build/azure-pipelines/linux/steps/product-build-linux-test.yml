@@ -87,13 +87,6 @@ steps:
       displayName: 🧪 Run integration tests (Electron)
       timeoutInMinutes: 20
 
-  - ${{ if eq(parameters.VSCODE_RUN_BROWSER_TESTS, true) }}:
-    - script: ./scripts/test-web-integration.sh --browser chromium
-      env:
-        VSCODE_REMOTE_SERVER_PATH: $(agent.builddirectory)/vscode-server-linux-$(VSCODE_ARCH)-web
-      displayName: 🧪 Run integration tests (Browser, Chromium)
-      timeoutInMinutes: 20
-
   - ${{ if eq(parameters.VSCODE_RUN_REMOTE_TESTS, true) }}:
     - script: |
         set -e
@@ -142,14 +135,6 @@ steps:
         TMPDIR: $(Agent.TempDirectory)
       timeoutInMinutes: 20
       displayName: 🧪 Run smoke tests (Electron)
-
-  - ${{ if eq(parameters.VSCODE_RUN_BROWSER_TESTS, true) }}:
-    - script: npm run smoketest-no-compile -- --web --tracing --headless
-      env:
-        VSCODE_REMOTE_SERVER_PATH: $(agent.builddirectory)/vscode-server-linux-$(VSCODE_ARCH)-web
-        TMPDIR: $(Agent.TempDirectory)
-      timeoutInMinutes: 20
-      displayName: 🧪 Run smoke tests (Browser, Chromium)
 
   - ${{ if eq(parameters.VSCODE_RUN_REMOTE_TESTS, true) }}:
     - script: |

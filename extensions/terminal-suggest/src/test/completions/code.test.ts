@@ -62,7 +62,6 @@ export const codeSpecOptionsAndSubcommands = [
 	'--wait',
 	'tunnel',
 	'chat [<prompt>]',
-	'serve-web',
 	'agent',
 	'help',
 	'status',
@@ -205,7 +204,6 @@ export function createCodeTunnelTestSpecs(executable: string): ITestSpec[] {
 		'chat [<prompt>]',
 		'ext',
 		'help',
-		'serve-web',
 		'status',
 		'tunnel',
 		'version'
@@ -246,22 +244,6 @@ export function createCodeTunnelTestSpecs(executable: string): ITestSpec[] {
 		'status',
 		'unregister',
 		'user'
-	];
-	const serveWebSubcommandsAndFlags: string[] = [
-		'--accept-server-license-terms',
-		'--cli-data-dir <cli_data_dir>',
-		'--connection-token [<connection_token>]',
-		'--connection-token-file [<connection_token_file>]',
-		'--help',
-		'--host [<host>]',
-		'--log [<log>]',
-		'--port [<port>]',
-		'--server-base-path [<server_base_path>]',
-		'--server-data-dir [<server_data_dir>]',
-		'--socket-path [<socket_path>]',
-		'--verbose',
-		'--without-connection-token',
-		'-h'
 	];
 
 	const extSubcommands: string[] = [
@@ -307,7 +289,6 @@ export function createCodeTunnelTestSpecs(executable: string): ITestSpec[] {
 		{ input: `${executable} chat |`, expectedCompletions: ['--mode <mode>', '--add-file <file>', '--help', '--maximize', '--new-window', '--reuse-window', '-m <mode>', '-a <file>', '-h', '-n', '-r'] },
 		{ input: `${executable} chat --mode |`, expectedCompletions: ['agent', 'ask', 'edit'] },
 		{ input: `${executable} chat --add-file |`, expectedResourceRequests: { type: 'files', cwd: testPaths.cwd } },
-		{ input: `${executable} serve-web |`, expectedCompletions: serveWebSubcommandsAndFlags },
 		{ input: `${executable} ext |`, expectedCompletions: extSubcommands },
 		{ input: `${executable} ext list |`, expectedCompletions: [...commonFlags, '--category [<category>]', '--show-versions'] },
 		{ input: `${executable} ext install |`, expectedCompletions: [...commonFlags, '--pre-release', '--donot-include-pack-and-dependencies', '--force'] },

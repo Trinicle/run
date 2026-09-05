@@ -9,7 +9,7 @@ import { URI } from '../../../../base/common/uri.js';
 import { ExtensionKind, IEnvironmentService, IExtensionHostDebugParams } from '../../../../platform/environment/common/environment.js';
 import { IPath } from '../../../../platform/window/common/window.js';
 import { IWorkbenchEnvironmentService } from '../common/environmentService.js';
-import { IWorkbenchConstructionOptions } from '../../../browser/web.api.js';
+import { IWorkbenchConstructionOptions } from '../../../browser/workbenchConstructionOptions.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
 import { memoize } from '../../../../base/common/decorators.js';
 import { onUnexpectedError } from '../../../../base/common/errors.js';

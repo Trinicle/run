@@ -8,7 +8,6 @@ import * as os from 'os';
 import * as playwright from 'playwright';
 import { IElement, ILocaleInfo, ILocalizedStrings, ILogFile } from './driver';
 import { Logger, measureAndLog } from './logger';
-import { launch as launchPlaywrightBrowser } from './playwrightBrowser';
 import { PlaywrightDriver } from './playwrightDriver';
 import { launch as launchPlaywrightElectron } from './playwrightElectron';
 import { teardown } from './processes';
@@ -99,21 +98,16 @@ export async function launch(options: LaunchOptions): Promise<Code> {
 		throw new Error('Smoke test process has terminated, refusing to spawn Code');
 	}
 
-	// Browser smoke tests
+	// Browser smoke tests were removed with the vscode-web product
 	if (options.web) {
-		const { serverProcess, driver } = await measureAndLog(() => launchPlaywrightBrowser(options), 'launch playwright (browser)', options.logger);
-		registerInstance(serverProcess, options.logger, 'server');
-
-		return new Code(driver, options.logger, serverProcess, undefined, options.quality, options.version);
+		throw new Error('vscode-web smoke tests were removed. Launch Electron instead of options.web.');
 	}
 
 	// Electron smoke tests (playwright)
-	else {
-		const { electronProcess, driver } = await measureAndLog(() => launchPlaywrightElectron(options), 'launch playwright (electron)', options.logger);
-		const { safeToKill } = registerInstance(electronProcess, options.logger, 'electron');
+	const { electronProcess, driver } = await measureAndLog(() => launchPlaywrightElectron(options), 'launch playwright (electron)', options.logger);
+	const { safeToKill } = registerInstance(electronProcess, options.logger, 'electron');
 
-		return new Code(driver, options.logger, electronProcess, safeToKill, options.quality, options.version);
-	}
+	return new Code(driver, options.logger, electronProcess, safeToKill, options.quality, options.version);
 }
 
 export class Code {

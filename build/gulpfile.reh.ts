@@ -24,8 +24,8 @@ import { promisify } from 'util';
 import rceditCallback from 'rcedit';
 import { compileBuildWithManglingTask } from './gulpfile.compile.ts';
 import { cleanExtensionsBuildTask, compileNonNativeExtensionsBuildTask, compileNativeExtensionsBuildTask, compileExtensionMediaBuildTask } from './gulpfile.extensions.ts';
-import { vscodeWebResourceIncludes, createVSCodeWebFileContentMapper } from './gulpfile.vscode.web.ts';
 import * as cp from 'child_process';
+import * as extensions from './lib/extensions.ts';
 import crypto from 'crypto';
 import log from 'fancy-log';
 import buildfile from './buildfile.ts';
@@ -41,6 +41,8 @@ const REPO_ROOT = path.dirname(import.meta.dirname);
 const commit = getVersion(REPO_ROOT);
 const BUILD_ROOT = path.dirname(REPO_ROOT);
 const REMOTE_FOLDER = path.join(REPO_ROOT, 'remote');
+const quality = (product as { quality?: string }).quality;
+const version = (quality && quality !== 'stable') ? `${packageJson.version}-${quality}` : packageJson.version;
 
 // Targets
 
@@ -96,43 +98,30 @@ const serverResources = [
 	...serverResourceExcludes
 ];
 
-const serverWithWebResourceIncludes = [
-	...serverResourceIncludes,
-	'out-build/vs/code/browser/workbench/*.html',
-	...vscodeWebResourceIncludes
-];
-
-const serverWithWebResourceExcludes = [
-	...serverResourceExcludes,
-	'!out-build/vs/code/**/*-dev.html'
-];
-
-const serverWithWebResources = [
-	...serverWithWebResourceIncludes,
-	...serverWithWebResourceExcludes
-];
 const serverEntryPoints = buildfile.codeServer;
 
-const webEntryPoints = [
-	buildfile.workerEditor,
-	buildfile.workerExtensionHost,
-	buildfile.workerNotebook,
-	buildfile.workerLanguageDetection,
-	buildfile.workerLocalFileSearch,
-	buildfile.workerOutputLinks,
-	buildfile.workerBackgroundTokenization,
-	buildfile.keyboardMaps,
-	buildfile.codeWeb
-].flat();
+const createRehFileContentMapper = (extensionsRoot: string, productJson: typeof import('../product.json')) => {
+	return (filePath: string): ((content: string) => string) | undefined => {
+		if (filePath.endsWith('vs/platform/product/common/product.js')) {
+			return content => {
+				const productConfiguration = JSON.stringify({
+					...productJson,
+					version,
+					commit,
+					date: readISODate('out-build')
+				});
+				return content.replace('/*BUILD->INSERT_PRODUCT_CONFIGURATION*/', () => productConfiguration.substring(1, productConfiguration.length - 2));
+			};
+		} else if (filePath.endsWith('vs/workbench/services/extensionManagement/browser/builtinExtensionsScannerService.js')) {
+			return content => {
+				const builtinExtensions = JSON.stringify(extensions.scanBuiltinExtensions(extensionsRoot));
+				return content.replace('/*BUILD->INSERT_BUILTIN_EXTENSIONS*/', () => builtinExtensions.substring(1, builtinExtensions.length - 2));
+			};
+		}
 
-const serverWithWebEntryPoints = [
-
-	// Include all of server
-	...serverEntryPoints,
-
-	// Include all of web
-	...webEntryPoints,
-].flat();
+		return undefined;
+	};
+};
 
 const bootstrapEntryPoints = [
 	'out-build/server-main.js',
@@ -368,10 +357,6 @@ function packageTask(type: string, platform: string, arch: string, sourceFolderN
 		};
 		const localWorkspaceExtensions = glob.sync('extensions/*/package.json')
 			.filter((extensionPath) => {
-				if (type === 'reh-web') {
-					return true; // web: ship all extensions for now
-				}
-
 				// Skip shipping UI extensions because the client side will have them anyways
 				// and they'd just increase the download without being used
 				const manifest = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, extensionPath)).toString());
@@ -456,24 +441,13 @@ function packageTask(type: string, platform: string, arch: string, sourceFolderN
 		const nodePath = `.build/node/v${nodeVersion}/${platform}-${arch}`;
 		const node = gulp.src(`${nodePath}/**`, { base: nodePath, dot: true });
 
-		let web: NodeJS.ReadWriteStream[] = [];
-		if (type === 'reh-web') {
-			web = [
-				'resources/server/favicon.ico',
-				'resources/server/code-192.png',
-				'resources/server/code-512.png',
-				'resources/server/manifest.json'
-			].map(resource => gulp.src(resource, { base: '.' }).pipe(rename(resource)));
-		}
-
 		const all = es.merge(
 			packageJsonStream,
 			productJsonStream,
 			license,
 			sources,
 			deps,
-			node,
-			...web
+			node
 		);
 
 		let result = all
@@ -617,16 +591,7 @@ function prepareCopilotRipgrepShimTaskREH(platform: string, arch: string, destin
 	};
 }
 
-/**
- * @param product The parsed product.json file contents
- */
-function tweakProductForServerWeb(product: typeof import('../product.json')) {
-	const result: typeof product & { webEndpointUrlTemplate?: string } = { ...product };
-	delete result.webEndpointUrlTemplate;
-	return result;
-}
-
-['reh', 'reh-web'].forEach(type => {
+['reh'].forEach(type => {
 	const bundleTask = task.define(`bundle-vscode-${type}`, task.series(
 		util.rimraf(`out-vscode-${type}`),
 		optimize.bundleTask(
@@ -635,11 +600,11 @@ function tweakProductForServerWeb(product: typeof import('../product.json')) {
 				esm: {
 					src: 'out-build',
 					entryPoints: [
-						...(type === 'reh' ? serverEntryPoints : serverWithWebEntryPoints),
+						...serverEntryPoints,
 						...bootstrapEntryPoints
 					],
-					resources: type === 'reh' ? serverResources : serverWithWebResources,
-					fileContentMapper: createVSCodeWebFileContentMapper('.build/extensions', type === 'reh-web' ? tweakProductForServerWeb(product) : product)
+					resources: serverResources,
+					fileContentMapper: createRehFileContentMapper('.build/extensions', product)
 				}
 			}
 		)
