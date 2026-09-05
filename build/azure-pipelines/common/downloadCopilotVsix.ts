@@ -184,6 +184,8 @@ async function waitForArtifact(): Promise<Artifact> {
 
 async function main(): Promise<void> {
 	installDiagnostics();
+	log('Skipping Copilot VSIX download; this fork does not ship GitHub Copilot.');
+	return;
 
 	const outputDir = path.resolve('.build/extensions/copilot');
 

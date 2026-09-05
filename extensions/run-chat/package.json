@@ -1,0 +1,68 @@
+{
+	"name": "run-chat",
+	"displayName": "%displayName%",
+	"description": "%description%",
+	"version": "1.0.0",
+	"publisher": "run",
+	"license": "MIT",
+	"engines": {
+		"vscode": "^1.100.0"
+	},
+	"categories": [
+		"AI",
+		"Chat"
+	],
+	"activationEvents": [
+		"onStartupFinished"
+	],
+	"main": "./out/extension",
+	"contributes": {
+		"languageModelChatProviders": [
+			{
+				"vendor": "run",
+				"displayName": "Run"
+			}
+		],
+		"configuration": {
+			"title": "Run Chat",
+			"properties": {
+				"run.chat.apiBase": {
+					"type": "string",
+					"default": "https://api.openai.com/v1",
+					"description": "%config.apiBase%"
+				},
+				"run.chat.model": {
+					"type": "string",
+					"default": "gpt-4o",
+					"description": "%config.model%"
+				},
+				"run.chat.models": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"default": [
+						"gpt-4o",
+						"gpt-4o-mini"
+					],
+					"description": "%config.models%"
+				},
+				"run.chat.apiKey": {
+					"type": "string",
+					"default": "",
+					"description": "%config.apiKey%"
+				}
+			}
+		},
+		"commands": [
+			{
+				"command": "run.chat.setApiKey",
+				"title": "%command.setApiKey%"
+			}
+		]
+	},
+	"scripts": {
+		"compile": "gulp compile-extension:run-chat",
+		"watch": "gulp watch-extension:run-chat"
+	}
+}

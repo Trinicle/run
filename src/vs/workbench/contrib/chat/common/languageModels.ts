@@ -47,10 +47,15 @@ import { ILanguageModelsProviderGroup, ILanguageModelsConfigurationService } fro
  * vendor across the chat stack (see `ILanguageModelProviderDescriptor.isDefault`).
  */
 export const COPILOT_VENDOR_ID = 'copilot';
+export const RUN_VENDOR_ID = 'run';
+
+export function isBuiltInChatVendor(vendor: string): boolean {
+	return vendor === COPILOT_VENDOR_ID || vendor === RUN_VENDOR_ID;
+}
 
 /** Whether a missing model is conclusively absent from a vendor's live model list. Empty Copilot results remain transient while token-backed discovery completes. */
 export function isLanguageModelVendorAbsenceConclusive(vendor: string, hasLiveModels: boolean, hasResolved: boolean): boolean {
-	return hasLiveModels || (hasResolved && vendor !== COPILOT_VENDOR_ID);
+	return hasLiveModels || (hasResolved && !isBuiltInChatVendor(vendor));
 }
 
 /**
@@ -80,6 +85,7 @@ const BUILT_IN_BYOK_VENDOR_IDS = new Set<string>([
 export const THIRD_PARTY_PROVIDER_TELEMETRY_NAME = '3p-extension';
 
 const BUILT_IN_BYOK_EXTENSION_IDS = [
+	'run.run-chat',
 	'github.copilot-chat',
 	'github.copilot',
 ];
@@ -91,7 +97,7 @@ const BUILT_IN_BYOK_EXTENSION_IDS = [
  * first-party Copilot vendor (or no vendor) so callers skip logging first-party usage.
  */
 export function getByokProviderTelemetryName(vendor: string | undefined, extension: ExtensionIdentifier | undefined): string | undefined {
-	if (!vendor || vendor === COPILOT_VENDOR_ID) {
+	if (!vendor || isBuiltInChatVendor(vendor)) {
 		return undefined;
 	}
 	if (BUILT_IN_BYOK_VENDOR_IDS.has(vendor) && extension && BUILT_IN_BYOK_EXTENSION_IDS.some(id => ExtensionIdentifier.equals(extension, id))) {
@@ -358,7 +364,7 @@ export namespace ILanguageModelChatMetadata {
 	}
 
 	export function matchesQualifiedName(name: string, metadata: ILanguageModelChatMetadata): boolean {
-		if (metadata.vendor === COPILOT_VENDOR_ID && name === metadata.name) {
+		if (isBuiltInChatVendor(metadata.vendor) && name === metadata.name) {
 			return true;
 		}
 		return name === asQualifiedName(metadata);
@@ -911,7 +917,7 @@ export function canHideModel(identifier: string, metadata: ILanguageModelChatMet
 	if (!metadata) {
 		return true;
 	}
-	if (metadata.vendor === COPILOT_VENDOR_ID && metadata.id === AUTO_RAW_MODEL_ID) {
+	if (isBuiltInChatVendor(metadata.vendor) && metadata.id === AUTO_RAW_MODEL_ID) {
 		return false;
 	}
 	return ILanguageModelChatMetadata.getAgentHostByokManageModelsIdentifier(metadata) === undefined;
@@ -1057,7 +1063,7 @@ export class LanguageModelsService implements ILanguageModelsService {
 					continue;
 				}
 				hasUserSelectable = true;
-				if (model.vendor !== COPILOT_VENDOR_ID) {
+				if (!isBuiltInChatVendor(model.vendor)) {
 					hasNonCopilotUserSelectable = true;
 					break;
 				}
@@ -1124,7 +1130,7 @@ export class LanguageModelsService implements ILanguageModelsService {
 				managementCommand: item.managementCommand,
 				deprecation: item.deprecation,
 				when: item.when,
-				isDefault: item.vendor === COPILOT_VENDOR_ID
+				isDefault: isBuiltInChatVendor(item.vendor)
 			};
 			this._vendors.set(item.vendor, vendor);
 			addedVendorIds.push(item.vendor);

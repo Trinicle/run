@@ -6,7 +6,7 @@
 import { IContextKeyService } from '../../../../platform/contextkey/common/contextkey.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../platform/storage/common/storage.js';
 import { ChatContextKeys } from './actions/chatContextKeys.js';
-import { COPILOT_VENDOR_ID, ILanguageModelChatMetadata, ILanguageModelsService } from './languageModels.js';
+import { ILanguageModelChatMetadata, ILanguageModelsService, isBuiltInChatVendor } from './languageModels.js';
 
 /**
  * Storage key prefix for persisted model selections.
@@ -233,5 +233,5 @@ export function isSelectedModelCopilot(
 	if (!vendor) {
 		return true; // no selection → treat as Copilot
 	}
-	return vendor === COPILOT_VENDOR_ID;
+	return isBuiltInChatVendor(vendor);
 }

@@ -358,6 +358,18 @@ export const AgentHostCodexAgentCodexHomeEnvVar = 'CODEX_HOME';
 /** Forwarded extra args for `codex app-server` (JSON-encoded string[]). */
 export const AgentHostCodexAgentBinaryArgsEnvVar = 'VSCODE_AGENT_HOST_CODEX_APP_SERVER_ARGS';
 
+/**
+ * Declarative ACP agent processes spawned by the agent host over stdio.
+ * Each entry is `{ id, command, args?, name?, description?, env? }`.
+ */
+export const AgentHostAcpAgentsSettingId = 'chat.agentHost.acpAgents';
+
+/**
+ * JSON-encoded form of {@link AgentHostAcpAgentsSettingId}, forwarded by the
+ * starters into the agent host process.
+ */
+export const AgentHostAcpAgentsEnvVar = 'VSCODE_AGENT_HOST_ACP_AGENTS';
+
 // -- OpenTelemetry settings ------------------------------------------------------
 //
 // The `chat.agentHost.otel.*` namespace surfaces the same exporter knobs the CLI
@@ -635,6 +647,7 @@ export interface IAgentSdkStarterSettings {
 	readonly codexBinaryArgs?: readonly string[];
 	readonly claudeAgentEnabled?: boolean;
 	readonly codexAgentEnabled?: boolean;
+	readonly acpAgents?: unknown;
 }
 
 export function buildAgentSdkEnv(
@@ -658,6 +671,14 @@ export function buildAgentSdkEnv(
 	}
 	if (settings.codexAgentEnabled !== undefined) {
 		setIfMissing(AgentHostCodexAgentEnabledEnvVar, settings.codexAgentEnabled ? 'true' : 'false');
+	}
+	if (settings.acpAgents !== undefined && settings.acpAgents !== null) {
+		const encoded = typeof settings.acpAgents === 'string'
+			? settings.acpAgents
+			: JSON.stringify(settings.acpAgents);
+		if (encoded !== '' && encoded !== '[]') {
+			setIfMissing(AgentHostAcpAgentsEnvVar, encoded);
+		}
 	}
 	return out;
 }

@@ -1,0 +1,32 @@
+NOTICES AND ATTRIBUTION
+=======================
+
+This product ("Run") is a fork of Microsoft's MIT-licensed Code - OSS
+(https://github.com/microsoft/vscode).
+
+MIT requires that copyright and permission notices be retained. Do not
+delete LICENSE.txt, this NOTICE, ThirdPartyNotices.txt, or the Microsoft
+copyright headers in source files. Removing those notices would violate MIT.
+
+Copyright
+---------
+
+Copyright (c) 2015 - present Microsoft Corporation
+
+Portions Copyright (c) 2026 Hunter Freeland
+
+Microsoft remains the copyright holder of the original Code - OSS sources.
+New files and modifications authored in this fork are Copyright (c)
+Hunter Freeland, licensed under the MIT License (see LICENSE.txt).
+
+Trademarks
+----------
+
+This product is not Visual Studio Code, is not affiliated with Microsoft,
+and must not be marketed under Microsoft or GitHub trademarks or logos.
+
+Third-party components
+----------------------
+
+Bundled third-party licenses are listed in ThirdPartyNotices.txt.
+Keep that file in every distribution.

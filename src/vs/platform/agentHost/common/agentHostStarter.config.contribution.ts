@@ -21,6 +21,7 @@ import {
 	AgentHostCodexMultiRootEnabledSettingId,
 	AgentHostCodexAgentSdkRootSettingId,
 	AgentHostCodexAgentCodexHomeSettingId,
+	AgentHostAcpAgentsSettingId,
 	AgentHostCopilotMultiRootEnabledSettingId,
 	AgentHostMarkdownPlanRichLinksEnabledSettingId,
 	AgentHostOTelCaptureContentSettingId,
@@ -324,6 +325,27 @@ configurationRegistry.registerConfiguration({
 			default: [],
 			tags: ['experimental', 'advanced'],
 			included: product.quality !== 'stable',
+		},
+		[AgentHostAcpAgentsSettingId]: {
+			type: 'array',
+			items: {
+				type: 'object',
+				required: ['id', 'command'],
+				properties: {
+					id: { type: 'string', description: nls.localize('chat.agentHost.acpAgents.id', "Provider id used as the AHP session URI scheme.") },
+					name: { type: 'string', description: nls.localize('chat.agentHost.acpAgents.name', "Display name shown in the agent picker.") },
+					description: { type: 'string' },
+					command: { type: 'string', description: nls.localize('chat.agentHost.acpAgents.command', "Executable spawned over stdio as an ACP agent.") },
+					args: { type: 'array', items: { type: 'string' } },
+					env: {
+						type: 'object',
+						additionalProperties: { type: 'string' },
+					},
+				},
+			},
+			markdownDescription: nls.localize('chat.agentHost.acpAgents', "ACP agents the Agent Host should spawn over stdio. Each entry is `{ id, command, args?, name?, description?, env? }`. Multi-client coordination stays on AHP; each agent process is a single ACP conversation per chat. The agent host process must be restarted for changes to take effect."),
+			default: [],
+			tags: ['experimental', 'advanced'],
 		},
 		[AgentHostOTelEnabledSettingId]: {
 			type: 'boolean',

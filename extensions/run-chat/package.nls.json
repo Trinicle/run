@@ -1,0 +1,9 @@
+{
+	"displayName": "Run Chat",
+	"description": "OpenAI-compatible language model provider for the Run editor chat panel.",
+	"config.apiBase": "Base URL of an OpenAI-compatible chat completions API (for example https://api.openai.com/v1 or a local llama.cpp/ollama OpenAI endpoint).",
+	"config.model": "Default model id sent to the API.",
+	"config.models": "Model ids shown in the chat model picker.",
+	"config.apiKey": "API key for the chat endpoint. Prefer the Set API Key command, which stores the key in secret storage. An environment variable RUN_CHAT_API_KEY also works.",
+	"command.setApiKey": "Run Chat: Set API Key"
+}

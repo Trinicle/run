@@ -78,29 +78,54 @@ else {
 	if (Object.keys(product).length === 0) {
 		Object.assign(product, {
 			version: '1.104.0-dev',
-			nameShort: 'Code - OSS Dev',
-			nameLong: 'Code - OSS Dev',
-			applicationName: 'code-oss',
-			dataFolderName: '.vscode-oss',
-			urlProtocol: 'code-oss',
-			reportIssueUrl: 'https://github.com/microsoft/vscode/issues/new',
+			nameShort: 'Run Dev',
+			nameLong: 'Run Dev',
+			applicationName: 'run',
+			dataFolderName: '.run',
+			urlProtocol: 'run',
+			reportIssueUrl: '',
 			licenseName: 'MIT',
-			licenseUrl: 'https://github.com/microsoft/vscode/blob/main/LICENSE.txt',
-			serverLicenseUrl: 'https://github.com/microsoft/vscode/blob/main/LICENSE.txt',
+			licenseUrl: 'https://opensource.org/licenses/MIT',
+			serverLicenseUrl: 'https://opensource.org/licenses/MIT',
 			defaultChatAgent: {
-				extensionId: 'GitHub.copilot',
-				chatExtensionId: 'GitHub.copilot-chat',
+				extensionId: 'run.run-chat',
+				chatExtensionId: 'run.run-chat',
+				chatExtensionOutputId: 'run.run-chat.Run Chat.log',
+				chatExtensionOutputExtensionStateCommand: '',
+				documentationUrl: '',
+				skusDocumentationUrl: '',
+				optimizeUsageDocumentationUrl: '',
+				publicCodeMatchesUrl: '',
+				managePlanUrl: '',
+				upgradePlanUrl: '',
+				signUpUrl: '',
+				termsStatementUrl: '',
+				privacyStatementUrl: '',
 				provider: {
-					default: {
-						id: 'github',
-						name: 'GitHub',
-					},
-					enterprise: {
-						id: 'github-enterprise',
-						name: 'GitHub Enterprise',
-					}
+					default: { id: 'run', name: 'Run' },
+					enterprise: { id: '', name: '' },
+					google: { id: '', name: '' },
+					apple: { id: '', name: '' },
+					microsoft: { id: '', name: '' }
 				},
-				providerScopes: []
+				providerExtensionId: '',
+				providerUriSetting: '',
+				providerScopes: [],
+				entitlementUrl: '',
+				entitlementSignupLimitedUrl: '',
+				tokenEntitlementUrl: '',
+				mcpRegistryDataUrl: '',
+				managedSettingsUrl: '',
+				chatQuotaExceededContext: 'run.chat.quotaExceeded',
+				completionsQuotaExceededContext: 'run.chat.completionsQuotaExceeded',
+				walkthroughCommand: '',
+				completionsMenuCommand: '',
+				chatRefreshTokenCommand: '',
+				generateCommitMessageCommand: '',
+				resolveMergeConflictsCommand: '',
+				completionsAdvancedSetting: 'run.chat.advanced',
+				completionsEnablementSetting: 'run.chat.enable',
+				nextEditSuggestionsSetting: 'run.chat.nextEditSuggestions.enabled'
 			}
 		});
 	}

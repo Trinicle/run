@@ -1,8 +1,8 @@
 NOTICES
 
 This repository incorporates material as listed below or described in the code.
-
-
+This file is retained to satisfy MIT and third-party license attribution
+requirements. Do not remove it from distributions of this fork.
 
 ---------------------------------------------------------
 

@@ -441,20 +441,22 @@ export async function dumpFailureDiagnostics(
 			logger.log(`[${label}] no window* directories found under ${logsPath}`);
 		}
 		for (const w of windowDirs) {
-			const chatLogPath = join(logsPath, w, 'exthost', 'GitHub.copilot-chat', 'GitHub Copilot Chat.log');
-			try {
-				const stat = await fs.promises.stat(chatLogPath);
-				const content = await fs.promises.readFile(chatLogPath, 'utf8');
-				const lines = content.split(/\r?\n/);
-				const tail = lines.slice(-80);
-				logger.log(`[${label}] --- BEGIN ${w}/GitHub Copilot Chat.log (size=${stat.size}; last ${tail.length} of ${lines.length} lines) ---`);
-				for (const ln of tail) {
-					logger.log(`[${label}] | ${ln}`);
+			const chatLogPath = join(logsPath, w, 'exthost', 'run.run-chat', 'Run Chat.log');
+			const legacyChatLogPath = join(logsPath, w, 'exthost', 'GitHub.copilot-chat', 'GitHub Copilot Chat.log');
+			for (const candidate of [chatLogPath, legacyChatLogPath]) {
+				try {
+					const stat = await fs.promises.stat(candidate);
+					const content = await fs.promises.readFile(candidate, 'utf8');
+					const lines = content.split(/\r?\n/);
+					const tail = lines.slice(-80);
+					logger.log(`[${label}] --- BEGIN ${candidate} (size=${stat.size}; last ${tail.length} of ${lines.length} lines) ---`);
+					for (const ln of tail) {
+						logger.log(`[${label}] | ${ln}`);
+					}
+					logger.log(`[${label}] --- END ${candidate} ---`);
+				} catch {
+					// File does not exist for this window. That's expected — skip.
 				}
-				logger.log(`[${label}] --- END ${w}/GitHub Copilot Chat.log ---`);
-			} catch {
-				// File does not exist for this window (e.g. windows without the
-				// Copilot Chat extension activated). That's expected — skip.
 			}
 		}
 	} catch (err) {
