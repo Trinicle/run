@@ -1,7 +1,7 @@
 NOTICES AND ATTRIBUTION
 =======================
 
-This product ("Run") is a fork of Microsoft's MIT-licensed Code - OSS
+This product ("Thea") is a fork of Microsoft's MIT-licensed Code - OSS
 (https://github.com/microsoft/vscode).
 
 MIT requires that copyright and permission notices be retained. Do not
@@ -53,7 +53,7 @@ is licensed separately under the MIT License:
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 
-Run is an independent fork and is not affiliated with, endorsed by, or sponsored
+Thea is an independent fork and is not affiliated with, endorsed by, or sponsored
 by Microsoft Corporation or GitHub, Inc. The Copilot extension is included as
 third-party software under its own license; use of Copilot features may be
 subject to separate GitHub terms when you choose to sign in or use a Copilot

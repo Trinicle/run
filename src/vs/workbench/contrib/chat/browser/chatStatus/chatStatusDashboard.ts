@@ -51,7 +51,7 @@ import { isCompletionsEnabled } from '../../../../../editor/common/services/comp
 const defaultChat = product.defaultChatAgent ?? {
 	completionsEnablementSetting: '',
 	nextEditSuggestionsSetting: '',
-	provider: { default: { name: 'Run' } },
+	provider: { default: { name: 'Thea' } },
 	termsStatementUrl: '',
 	privacyStatementUrl: '',
 };

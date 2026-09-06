@@ -1,6 +1,6 @@
 # Configure ACP agents
 
-Run's Agent Host harness supports subprocess agents over the Agent Client Protocol (ACP). ACP agents share the same IDE tools (edit file, terminal, etc.) as BYOK chat sessions.
+Thea's Agent Host harness supports subprocess agents over the Agent Client Protocol (ACP). ACP agents share the same IDE tools (edit file, terminal, etc.) as BYOK chat sessions.
 
 ## Setup
 

@@ -1,6 +1,6 @@
-# Run
+# Thea
 
-Run is a code editor forked from [Code - OSS](https://github.com/microsoft/vscode), the MIT-licensed open-source project that Microsoft uses to build Visual Studio Code.
+Thea is a code editor forked from [Code - OSS](https://github.com/microsoft/vscode), the MIT-licensed open-source project that Microsoft uses to build Visual Studio Code.
 
 This distribution is **not** Visual Studio Code, is not affiliated with Microsoft, and does not use Microsoft or GitHub trademarks as product branding.
 
@@ -14,7 +14,7 @@ Third-party notices for bundled dependencies are in [ThirdPartyNotices.txt](Thir
 
 ## Chat
 
-Run ships the **GitHub Copilot** extension (`GitHub.copilot-chat`) for chat, inline completions, and BYOK model providers. Configure API keys via Copilot BYOK settings or sign in with GitHub for a Copilot subscription. The **Agent Host** harness unifies sidebar chat, tools, completions, and next-edit across BYOK models and ACP agents.
+Thea ships the **GitHub Copilot** extension (`GitHub.copilot-chat`) for chat, inline completions, and BYOK model providers. Configure API keys via Copilot BYOK settings or sign in with GitHub for a Copilot subscription. The **Agent Host** harness unifies sidebar chat, tools, completions, and next-edit across BYOK models and ACP agents.
 
 ## Build
 

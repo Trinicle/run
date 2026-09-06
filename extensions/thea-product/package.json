@@ -1,9 +1,9 @@
 {
-	"name": "run-product",
+	"name": "thea-product",
 	"displayName": "%displayName%",
 	"description": "%description%",
 	"version": "1.0.0",
-	"publisher": "run",
+	"publisher": "thea",
 	"license": "MIT",
 	"engines": {
 		"vscode": "^1.100.0"
@@ -22,12 +22,12 @@
 		},
 		"walkthroughs": [
 			{
-				"id": "run.welcome",
+				"id": "thea.welcome",
 				"title": "%walkthrough.title%",
 				"description": "%walkthrough.description%",
 				"steps": [
 					{
-						"id": "run.welcome.byok",
+						"id": "thea.welcome.byok",
 						"title": "%walkthrough.byok.title%",
 						"description": "%walkthrough.byok.description%",
 						"media": {
@@ -35,7 +35,7 @@
 						}
 					},
 					{
-						"id": "run.welcome.acp",
+						"id": "thea.welcome.acp",
 						"title": "%walkthrough.acp.title%",
 						"description": "%walkthrough.acp.description%",
 						"media": {
@@ -47,13 +47,13 @@
 		],
 		"commands": [
 			{
-				"command": "run.welcome.open",
+				"command": "thea.welcome.open",
 				"title": "%command.openWelcome%"
 			}
 		]
 	},
 	"scripts": {
-		"compile": "gulp compile-extension:run-product",
-		"watch": "gulp watch-extension:run-product"
+		"compile": "gulp compile-extension:thea-product",
+		"watch": "gulp watch-extension:thea-product"
 	}
 }

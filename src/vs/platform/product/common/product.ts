@@ -78,11 +78,11 @@ else {
 	if (Object.keys(product).length === 0) {
 		Object.assign(product, {
 			version: '1.104.0-dev',
-			nameShort: 'Run Dev',
-			nameLong: 'Run Dev',
-			applicationName: 'run',
-			dataFolderName: '.run',
-			urlProtocol: 'run',
+			nameShort: 'Thea Dev',
+			nameLong: 'Thea Dev',
+			applicationName: 'thea',
+			dataFolderName: '.thea',
+			urlProtocol: 'thea',
 			reportIssueUrl: '',
 			licenseName: 'MIT',
 			licenseUrl: 'https://opensource.org/licenses/MIT',
@@ -102,7 +102,7 @@ else {
 				upgradePlanUrl: '',
 				signUpUrl: '',
 				provider: {
-					default: { id: 'run', name: 'Run' },
+					default: { id: 'thea', name: 'Thea' },
 					enterprise: { id: 'github-enterprise', name: 'GHE.com' },
 					google: { id: 'google', name: 'Google' },
 					apple: { id: 'apple', name: 'Apple' },

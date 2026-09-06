@@ -81,7 +81,7 @@ const compilations = [
 	'extensions/npm/tsconfig.json',
 	'extensions/php-language-features/tsconfig.json',
 	'extensions/references-view/tsconfig.json',
-	'extensions/run-product/tsconfig.json',
+	'extensions/thea-product/tsconfig.json',
 	'extensions/search-result/tsconfig.json',
 	'extensions/simple-browser/tsconfig.json',
 	'extensions/tunnel-forwarding/tsconfig.json',

@@ -1,6 +1,6 @@
-# Run Product Roadmap
+# Thea Product Roadmap
 
-This document is the canonical product roadmap for **Run** — a Code-OSS fork aimed at a Devin-style agentic editor with full IDE integration, Copilot-class features (extended and rebranded), and ACP-based subprocess agents.
+This document is the canonical product roadmap for **Thea** — a Code-OSS fork aimed at a Devin-style agentic editor with full IDE integration, Copilot-class features (extended and rebranded), and ACP-based subprocess agents.
 
 It describes **what to build, in what order, and why** — not individual implementation tickets.
 
@@ -8,12 +8,12 @@ It describes **what to build, in what order, and why** — not individual implem
 
 ## Vision and principles
 
-1. **Extend Copilot, do not fork it apart.** The GitHub Copilot Chat extension remains the backbone for chat agents, tools, inline completions, and search. Run adds a thin product layer for branding and product-specific defaults.
+1. **Extend Copilot, do not fork it apart.** The GitHub Copilot Chat extension remains the backbone for chat agents, tools, inline completions, and search. Thea adds a thin product layer for branding and product-specific defaults.
 2. **Sidebar chat first.** The primary agent surface is the workbench chat sidebar. The sessions window is secondary.
 3. **ACP agents are first-class.** Subprocess agents speaking the Agent Client Protocol (ACP) appear in the chat model/agent picker and can drive IDE features — not just panel chat.
 4. **Workspace-scoped intelligence.** Shared context (blackboard, memory, issues) lives at the workspace/repo level so parallel agents can coordinate.
 5. **Local-first indexing.** Codebase semantic search uses a local vector index on repo open — no dependency on GitHub's remote index.
-6. **Run-owned routing.** "Auto" model selection uses a Run classifier over a configurable pool (Copilot `/auto` is one backend, not the only one).
+6. **Thea-owned routing.** "Auto" model selection uses a Thea classifier over a configurable pool (Copilot `/auto` is one backend, not the only one).
 
 ---
 
@@ -21,16 +21,16 @@ It describes **what to build, in what order, and why** — not individual implem
 
 | Topic | Decision |
 | ----- | -------- |
-| Copilot | Utilize + extend + rebrand — keep Copilot extension; add thin Run layer |
+| Copilot | Utilize + extend + rebrand — keep Copilot extension; add thin Thea layer |
 | ACP IDE integration | All surfaces — ghost text, inline chat, agent edits, Copilot-like features |
 | Shared context | Workspace-level blackboard — all agents/sessions share a mutable pool |
 | Indexing | Local-only vector store on repo open (Cursor-style) |
 | Issue planning | Internal-only parent/child issue graph (no GitHub Issues sync) |
 | Primary UI | Sidebar chat first; sessions window secondary |
-| Model routing | Run-owned router — classifier picks from configurable model pool |
+| Model routing | Thea-owned router — classifier picks from configurable model pool |
 | Wikis | Workspace agent memory — durable project knowledge (not full wiki editor v1) |
 | Auth (Phase 0) | Local-first — BYOK + ACP default; GitHub Copilot subscription optional opt-in |
-| Branding (Phase 0) | Thin `run.run-product` extension; internal chat id stays `GitHub.copilot-chat` |
+| Branding (Phase 0) | Thin `thea.thea-product` extension; internal chat id stays `GitHub.copilot-chat` |
 
 ---
 
@@ -40,8 +40,8 @@ What exists in the repo today:
 
 | Area | Status |
 | ---- | ------ |
-| `run.run-product` | Thin branding layer — welcome walkthrough, BYOK/ACP defaults, local-first setup |
-| Copilot extension | **Shipped in Run builds** (`.build/extensions/copilot/`; `compile-copilot-extension-build`) |
+| `thea.thea-product` | Thin branding layer — welcome walkthrough, BYOK/ACP defaults, local-first setup |
+| Copilot extension | **Shipped in Thea builds** (`.build/extensions/copilot/`; `compile-copilot-extension-build`) |
 | `run.run-chat` | **Removed** — deleted in Phase 0; BYOK via Copilot + Agent Host harness |
 | Agent Host + ACP | Built in workbench core; unified harness for sidebar chat, tools, completions, NES |
 | ACP built-ins | `copilotcli`, `claude`, `codex` registered in harness picker (unsigned when allowed) |
@@ -59,9 +59,9 @@ What exists in the repo today:
 
 ```mermaid
 flowchart TB
-  subgraph runToday [Run after Phase 0]
+  subgraph theaToday [Thea after Phase 0]
     CopilotExt[Copilot extension shipped]
-    RunProduct[run.run-product branding]
+    TheaProduct[thea.thea-product branding]
     AgentHost[Agent Host unified harness]
     ACPAgents[ACP built-ins in picker]
   end
@@ -71,7 +71,7 @@ flowchart TB
     AcpModels[ACP model discovery Phase 1]
   end
 
-  CopilotExt --> RunProduct
+  CopilotExt --> TheaProduct
   AgentHost --> ACPAgents
   AgentHost -.->|Phase 6| CodeSearch
   ACPAgents -.->|Phase 1| AcpModels
@@ -88,7 +88,7 @@ Tasks are grouped by phase. **Within each phase, complete bullets in order.** Do
 - [x] Remove `copilot` from build exclusion in `build/lib/extensions.ts`
 - [x] Point `product.json` `defaultChatAgent` at `GitHub.copilot-chat`
 - [x] Build and verify Copilot extension loads (chat participant, tools, completions)
-- [x] Create Run product extension (`run.run-product`) for branding, welcome, and defaults
+- [x] Create Thea product extension (`thea.thea-product`) for branding, welcome, and defaults
 - [x] Auth path: **local-first** — BYOK + ACP without GitHub gate; GitHub optional opt-in
 - [x] Remove `run.run-chat` entirely (Copilot BYOK + Agent Host harness replaces it)
 - [x] Unified Agent Host harness — BYOK models and ACP session types share client tools
@@ -106,7 +106,7 @@ Tasks are grouped by phase. **Within each phase, complete bullets in order.** Do
 - [ ] Wire auth/model refresh when credentials change
 - [ ] Verify model pipeline: Agent Host root state → `AgentHostChatContribution` → chat picker
 - [ ] Register custom ACP agents from `chat.agentHost.acpAgents` in session type picker
-- [ ] Set Run defaults for built-in ACP agents (`acpBuiltInAgents.ts`)
+- [ ] Set Thea defaults for built-in ACP agents (`acpBuiltInAgents.ts`)
 - [ ] Ensure client tools are registered for ACP session types (`agentHostActiveClientService.ts`)
 - [ ] Define sidebar UX: picking an ACP agent starts an agent-host session
 
@@ -125,8 +125,8 @@ Tasks are grouped by phase. **Within each phase, complete bullets in order.** Do
 - [ ] Enable `EditorInline` for all target ACP providers (not only `copilotcli`)
 - [ ] Route inline chat to selected ACP session type (`inlineChatSessionResolver.ts`)
 - [ ] Parity-check agent edit session + diff preview for ACP vs Copilot CLI
-- [ ] Design ghost-text bridge (`IInlineCompletionBridge` or Run extension hook)
-- [ ] Decide fast path: Copilot completions under the hood vs Run-local model vs on-demand only
+- [ ] Design ghost-text bridge (`IInlineCompletionBridge` or Thea extension hook)
+- [ ] Decide fast path: Copilot completions under the hood vs Thea-local model vs on-demand only
 - [ ] Implement minimal Copilot extension hook for completion proxy (if needed)
 - [ ] Resolve dual-agent UX when Copilot participant and ACP agent are both active
 
@@ -140,22 +140,22 @@ Tasks are grouped by phase. **Within each phase, complete bullets in order.** Do
 
 ---
 
-### Phase 3 — Run model router + cost UI
+### Phase 3 — Thea model router + cost UI
 
-- [ ] Add Run router service (configurable model pool, rules-based classifier v1)
+- [ ] Add Thea router service (configurable model pool, rules-based classifier v1)
 - [ ] Integrate router with sidebar chat send path
 - [ ] Implement ACP `changeModel` (currently stubbed)
 - [ ] Treat Copilot `/auto` as one backend inside the pool, not the only router
 - [ ] Populate input/output/cache costs for BYOK and ACP models in metadata
 - [ ] Extend `modelPickerHover.ts` for all models + Auto router explanation
 
-**Milestone:** Auto picks via Run router; hover shows full cost breakdown where data exists.
+**Milestone:** Auto picks via Thea router; hover shows full cost breakdown where data exists.
 
 ---
 
 ### Phase 4 — Workspace blackboard
 
-- [ ] Design storage format and location (`.run/board.json` or DB — decide)
+- [ ] Design storage format and location (`.thea/board.json` or DB — decide)
 - [ ] Implement `IWorkspaceAgentBoardService` (CRUD, workspace-scoped)
 - [ ] Add agent tools: read/write/search board entries
 - [ ] Inject summarized board context into Copilot + ACP prompts
@@ -168,7 +168,7 @@ Tasks are grouped by phase. **Within each phase, complete bullets in order.** Do
 
 ### Phase 5 — Internal issue graph
 
-- [ ] Define `RunIssue` model (parent/child, status, agent context refs)
+- [ ] Define `TheaIssue` model (parent/child, status, agent context refs)
 - [ ] Build issue tree UI in sidebar (primary surface)
 - [ ] Implement context inheritance: child agents receive parent context + board slice
 - [ ] Add agent tools: `create_issue`, `update_issue`, `link_issues`, `spawn_agent_for_issue`
@@ -184,7 +184,7 @@ Tasks are grouped by phase. **Within each phase, complete bullets in order.** Do
 - [ ] Implement chunking pipeline (files, symbols, `.gitignore` respect)
 - [ ] Trigger index on workspace open; incremental updates on file change
 - [ ] Add status bar progress UI
-- [ ] Expose semantic search agent tool (Run-owned, no GitHub remote index)
+- [ ] Expose semantic search agent tool (Thea-owned, no GitHub remote index)
 - [ ] Wire tool into ACP client tools + Copilot agent tool sets
 
 **Milestone:** Open repo → index builds → agent semantic search works offline.
@@ -204,11 +204,11 @@ Tasks are grouped by phase. **Within each phase, complete bullets in order.** Do
 
 ### Phase 8 — Better planning (Superpowers-style)
 
-- [ ] Add Run planning mode in sidebar (brainstorm → review → approve)
+- [ ] Add Thea planning mode in sidebar (brainstorm → review → approve)
 - [ ] Gate edit tools until plan approved
 - [ ] On approval, auto-generate Phase 5 issue tree from plan
 - [ ] Integrate with existing plan review UI (`chatPlanReviewPart.ts`)
-- [ ] Optional: Run skills / superpowers-style prompt packs
+- [ ] Optional: Thea skills / superpowers-style prompt packs
 
 **Milestone:** Approved plan unlocks edits and spawns linked issues.
 
@@ -228,7 +228,7 @@ Tasks are grouped by phase. **Within each phase, complete bullets in order.** Do
 
 ### Phase 10 — Workspace agent memory
 
-- [ ] Create workspace-scoped memory store (`.run/memory/` — separate from session chronicle)
+- [ ] Create workspace-scoped memory store (`.thea/memory/` — separate from session chronicle)
 - [ ] Agent tools: `remember`, `recall`, `forget` with tags
 - [ ] Prompt injection rules for all agents (Copilot + ACP)
 - [ ] Optional: memory browser in sidebar
@@ -254,9 +254,9 @@ Phase 4 → Phase 10 (optional overlap with Phase 5)
 
 ```mermaid
 flowchart TB
-  subgraph runProduct [Run Product Layer]
-    Rebrand[Run extension branding]
-    Router[Run model router]
+  subgraph theaProduct [Thea Product Layer]
+    Rebrand[Thea extension branding]
+    Router[Thea model router]
     Board[Workspace blackboard]
     Issues[Internal issue graph]
     Index[Local vector index]
@@ -301,12 +301,12 @@ flowchart TB
 
 **Gaps:** Empty model list on `AcpAgentProvider`; no ghost-text bridge; `EditorInline` only for `copilotcli`; stubbed `changeModel`.
 
-**Approach:** Phase 1 fixes picker/models; Phase 2 bridges IDE surfaces; prefer workbench + Run extension hooks over splitting Copilot.
+**Approach:** Phase 1 fixes picker/models; Phase 2 bridges IDE surfaces; prefer workbench + Thea extension hooks over splitting Copilot.
 
 **Open questions:**
 
-- Which ACP agents are Run built-in defaults vs user-configured only?
-- Ghost text: Copilot API under the hood vs Run-local model vs on-demand only?
+- Which ACP agents are Thea built-in defaults vs user-configured only?
+- Ghost text: Copilot API under the hood vs Thea-local model vs on-demand only?
 - Who owns the session when Copilot participant and ACP agent are both active?
 
 ---
@@ -323,7 +323,7 @@ flowchart TB
 
 **Open questions:**
 
-- Storage: `.run/board.json` vs SQLite vs cloud sync?
+- Storage: `.thea/board.json` vs SQLite vs cloud sync?
 - Human-editable vs agent-only?
 - Merge with Copilot `/memories/` or keep separate?
 
@@ -337,7 +337,7 @@ flowchart TB
 
 **Gaps:** No internal issue graph; no parent→child context inheritance; no issue tree UI in sidebar.
 
-**Approach:** `RunIssue` model + sidebar tree + spawn agents per issue + link to blackboard.
+**Approach:** `TheaIssue` model + sidebar tree + spawn agents per issue + link to blackboard.
 
 **Open questions:**
 
@@ -355,7 +355,7 @@ flowchart TB
 
 **Gaps:** No repo-level memory store or UI.
 
-**Approach:** `.run/memory/` + remember/recall tools + prompt injection (Phase 10).
+**Approach:** `.thea/memory/` + remember/recall tools + prompt injection (Phase 10).
 
 ---
 
@@ -367,7 +367,7 @@ flowchart TB
 
 **Gaps:** No stepper UI; no call-graph-guided walk command.
 
-**Approach:** Run command + language service + optional index (Phase 6) + anchored UI (Phase 7).
+**Approach:** Thea command + language service + optional index (Phase 6) + anchored UI (Phase 7).
 
 ---
 
@@ -389,9 +389,9 @@ flowchart TB
 
 **Exists:** Copilot `workspaceChunkSearch` (lazy, often remote).
 
-**Gaps:** No Run-owned index-on-open; no offline-first path.
+**Gaps:** No Thea-owned index-on-open; no offline-first path.
 
-**Approach:** New Run indexing service + agent search tool (Phase 6).
+**Approach:** New Thea indexing service + agent search tool (Phase 6).
 
 **Open questions:**
 
@@ -407,9 +407,9 @@ flowchart TB
 
 **Exists:** Copilot `AutomodeService` (POST `/auto`); agent-host Auto model for Copilot CLI.
 
-**Gaps:** No Run-owned router across Copilot + BYOK + ACP; multi-turn routing not wired.
+**Gaps:** No Thea-owned router across Copilot + BYOK + ACP; multi-turn routing not wired.
 
-**Approach:** Run router service; Copilot `/auto` as one backend (Phase 3).
+**Approach:** Thea router service; Copilot `/auto` as one backend (Phase 3).
 
 **Open questions:**
 
@@ -438,7 +438,7 @@ flowchart TB
 
 **Gaps:** No enforced gates; no auto-issue-tree from approved plan.
 
-**Approach:** Run planning mode + tool lock until approved + Phase 5 integration (Phase 8).
+**Approach:** Thea planning mode + tool lock until approved + Phase 5 integration (Phase 8).
 
 ---
 
@@ -451,7 +451,7 @@ flowchart TB
 | Blackboard concurrency | Parallel agents clobber shared state | Versioning/ETags from day one |
 | Local index cost | Large repos slow to index | Background indexing + user consent + incremental updates |
 | Dual automation systems | Confusing UX | Unify in Phase 9 before adding webhooks |
-| Licensing/branding | Copilot identity vs Run product | Decide in Phase 0; document in NOTICE |
+| Licensing/branding | Copilot identity vs Thea product | Decide in Phase 0; document in NOTICE |
 
 ---
 
@@ -469,9 +469,9 @@ flowchart TB
 
 | # | Question | Phase | Status |
 | - | -------- | ----- | ------ |
-| 1 | Copilot UI branding vs extension identity | 0 | **Resolved** — thin `run.run-product` layer; extension id stays `GitHub.copilot-chat` |
+| 1 | Copilot UI branding vs extension identity | 0 | **Resolved** — thin `thea.thea-product` layer; extension id stays `GitHub.copilot-chat` |
 | 2 | GitHub auth required vs BYOK-only users | 0 | **Resolved** — local-first; BYOK + ACP default; GitHub optional |
-| 3 | Default ACP agents shipped with Run | 1 | Open |
+| 3 | Default ACP agents shipped with Thea | 1 | Open |
 | 4 | Sidebar picks ACP → auto-start agent-host session? | 1 | Open |
 | 5 | Ghost text fast path architecture | 2 | Open |
 | 6 | Blackboard storage format | 4 | Open |
@@ -496,7 +496,7 @@ flowchart TB
 | ----- | ---- |
 | Build / Copilot bundle | `build/lib/extensions.ts`, `build/gulpfile.extensions.ts` |
 | Product config | `product.json` |
-| Run product extension | `extensions/run-product/` |
+| Thea product extension | `extensions/thea-product/` |
 | Copilot harness completions | `extensions/copilot/src/extension/completions/vscode-node/harnessModelCompletionsService.ts` |
 | ACP provider | `src/vs/platform/agentHost/node/acp/` |
 | Agent Host chat bridge | `src/vs/workbench/contrib/chat/browser/agentSessions/agentHost/` |

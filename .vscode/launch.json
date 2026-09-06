@@ -508,12 +508,12 @@
 			"request": "launch",
 			"name": "Run Unit Tests",
 			"program": "${workspaceFolder}/test/unit/electron/index.js",
-			"runtimeExecutable": "${workspaceFolder}/.build/electron/Run.app/Contents/MacOS/Run",
+			"runtimeExecutable": "${workspaceFolder}/.build/electron/Thea.app/Contents/MacOS/Thea",
 			"windows": {
-				"runtimeExecutable": "${workspaceFolder}/.build/electron/Run.exe"
+				"runtimeExecutable": "${workspaceFolder}/.build/electron/Thea.exe"
 			},
 			"linux": {
-				"runtimeExecutable": "${workspaceFolder}/.build/electron/run"
+				"runtimeExecutable": "${workspaceFolder}/.build/electron/thea"
 			},
 			"outputCapture": "std",
 			"args": [
@@ -538,12 +538,12 @@
 			"request": "launch",
 			"name": "Run Unit Tests For Current File",
 			"program": "${workspaceFolder}/test/unit/electron/index.js",
-			"runtimeExecutable": "${workspaceFolder}/.build/electron/Run.app/Contents/MacOS/Run",
+			"runtimeExecutable": "${workspaceFolder}/.build/electron/Thea.app/Contents/MacOS/Thea",
 			"windows": {
-				"runtimeExecutable": "${workspaceFolder}/.build/electron/Run.exe"
+				"runtimeExecutable": "${workspaceFolder}/.build/electron/Thea.exe"
 			},
 			"linux": {
-				"runtimeExecutable": "${workspaceFolder}/.build/electron/run"
+				"runtimeExecutable": "${workspaceFolder}/.build/electron/thea"
 			},
 			"cascadeTerminateToConfigurations": [
 				"Attach to VS Code"
@@ -574,7 +574,7 @@
 			"timeout": 240000,
 			"args": [
 				"-l",
-				"${workspaceFolder}/.build/electron/Run.app/Contents/MacOS/Run"
+				"${workspaceFolder}/.build/electron/Thea.app/Contents/MacOS/Thea"
 			],
 			"outFiles": [
 				"${cwd}/out/**/*.js"

@@ -1,6 +1,6 @@
 # Bring your own model
 
-Run ships with GitHub Copilot's BYOK support enabled by default. You can use chat, inline completions, and next-edit with your own API keys—no GitHub subscription required.
+Thea ships with GitHub Copilot's BYOK support enabled by default. You can use chat, inline completions, and next-edit with your own API keys—no GitHub subscription required.
 
 ## Setup
 

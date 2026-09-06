@@ -1,11 +1,11 @@
 {
-	"displayName": "Run Product",
-	"description": "Run product defaults, welcome walkthrough, and first-run chat setup.",
-	"walkthrough.title": "Get started with Run",
+	"displayName": "Thea Product",
+	"description": "Thea product defaults, welcome walkthrough, and first-run chat setup.",
+	"walkthrough.title": "Get started with Thea",
 	"walkthrough.description": "Configure local AI models and agents without requiring GitHub sign-in.",
 	"walkthrough.byok.title": "Bring your own model (BYOK)",
 	"walkthrough.byok.description": "Add an API key for an OpenAI-compatible provider so chat, completions, and next-edit can use your chosen model.",
 	"walkthrough.acp.title": "Configure ACP agents",
 	"walkthrough.acp.description": "Add subprocess agents via chat.agentHost.acpAgents to run Claude, Codex, or other ACP-compatible agents in the Agent Host harness.",
-	"command.openWelcome": "Run: Open Welcome Walkthrough"
+	"command.openWelcome": "Thea: Open Welcome Walkthrough"
 }
