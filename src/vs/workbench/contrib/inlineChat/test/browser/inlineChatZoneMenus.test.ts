@@ -145,16 +145,12 @@ suite('Inline chat zone widget — menu contributions', function () {
 		// Panel-only commands must never appear in inline chat (chatLocation == 'editor')
 		const panelOnlyCommands = [
 			'workbench.action.chat.openModePicker',
-			'workbench.action.chat.openSessionTargetPicker',
 			'workbench.action.chat.openWorkspacePicker',
 			'workbench.action.chat.chatSessionPrimaryPicker',
 		];
 		for (const cmd of panelOnlyCommands) {
 			assert.ok(!ids.includes(cmd), `panel-only command "${cmd}" should NOT appear in inline chat`);
 		}
-
-		// The attach context action should be present for inline chat
-		assert.ok(ids.includes('workbench.action.chat.attachContext'), 'attachContext should appear in inline chat');
 	});
 
 	test('ChatInput — panel context for comparison', () => {
@@ -166,8 +162,6 @@ suite('Inline chat zone widget — menu contributions', function () {
 		});
 		const ids = visibleIds(MenuId.ChatInput, ctx);
 
-		// In the panel, mode picker and attach context should appear
-		assert.ok(ids.includes('workbench.action.chat.attachContext'), 'attachContext should appear in panel');
 		assert.ok(ids.includes('workbench.action.chat.openModePicker'), 'openModePicker should appear in panel');
 	});
 

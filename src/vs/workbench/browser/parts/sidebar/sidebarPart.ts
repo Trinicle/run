@@ -36,6 +36,7 @@ import { localize2 } from '../../../../nls.js';
 import { IHoverService } from '../../../../platform/hover/browser/hover.js';
 import { VisibleViewContainersTracker } from '../visibleViewContainersTracker.js';
 import { Extensions } from '../../panecomposite.js';
+import { SIDEBAR_COMPACT_CONTENT_WIDTH, SIDEBAR_EXPANDED_MIN_WIDTH } from './theaSidebarChrome.js';
 
 const PRIMARY_SIDE_BAR_SASH_CLASS = 'primary-sidebar-sash';
 
@@ -45,11 +46,16 @@ export class SidebarPart extends AbstractPaneCompositePart {
 
 	//#region IView
 
-	readonly minimumWidth: number = 170;
-	readonly maximumWidth: number = Number.POSITIVE_INFINITY;
+	get minimumWidth(): number {
+		return this.layoutService.isSideBarCompact() ? SIDEBAR_COMPACT_CONTENT_WIDTH : SIDEBAR_EXPANDED_MIN_WIDTH;
+	}
+
+	get maximumWidth(): number {
+		return this.layoutService.isSideBarCompact() ? SIDEBAR_COMPACT_CONTENT_WIDTH : Number.POSITIVE_INFINITY;
+	}
 	readonly minimumHeight: number = 0;
 	readonly maximumHeight: number = Number.POSITIVE_INFINITY;
-	override get snap(): boolean { return true; }
+	override get snap(): boolean { return false; }
 
 	readonly priority: LayoutPriority = LayoutPriority.Low;
 
@@ -122,6 +128,7 @@ export class SidebarPart extends AbstractPaneCompositePart {
 		this._register(this.visibleViewContainersTracker.onDidChange((e) => this.onDidChangeAutoHideViewContainers(e)));
 
 		this.rememberActivityBarVisiblePosition();
+		this._register(this.layoutService.onDidChangeSideBarCompact(() => this._onDidChange.fire(undefined)));
 		this._register(configurationService.onDidChangeConfiguration(e => {
 			if (e.affectsConfiguration(LayoutSettings.ACTIVITY_BAR_LOCATION)) {
 				this.onDidChangeActivityBarLocation();

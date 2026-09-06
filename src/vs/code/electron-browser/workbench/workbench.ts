@@ -402,9 +402,9 @@
 					});
 				}
 				if (modernUI) {
-					applyFloatingCardStyles(auxSideDiv, colorInfo.sideBarBackground, layoutInfo.partBounds?.auxiliaryBar, auxiliaryBarFallbackOuterEdges);
+					applyFloatingCardStyles(auxSideDiv, colorInfo.editorBackground ?? colorInfo.sideBarBackground, layoutInfo.partBounds?.auxiliaryBar, auxiliaryBarFallbackOuterEdges);
 				} else {
-					auxSideDiv.style.backgroundColor = `${colorInfo.sideBarBackground}`;
+					auxSideDiv.style.backgroundColor = `${colorInfo.editorBackground ?? colorInfo.sideBarBackground}`;
 				}
 				splash.appendChild(auxSideDiv);
 

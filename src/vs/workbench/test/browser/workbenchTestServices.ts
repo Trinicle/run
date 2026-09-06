@@ -652,6 +652,7 @@ export class TestLayoutService implements IWorkbenchLayoutService {
 	onDidAddContainer = Event.None;
 	onDidChangeActiveContainer = Event.None;
 	onDidChangeAuxiliaryBarMaximized = Event.None;
+	onDidChangeSideBarCompact = Event.None;
 
 	layout(): void { }
 	isRestored(): boolean { return true; }
@@ -676,6 +677,8 @@ export class TestLayoutService implements IWorkbenchLayoutService {
 	async setSideBarHidden(_hidden: boolean): Promise<void> { }
 	async setAuxiliaryBarHidden(_hidden: boolean): Promise<void> { }
 	async setPartHidden(_hidden: boolean, part: Parts): Promise<void> { }
+	isSideBarCompact(): boolean { return false; }
+	setSideBarCompact(_compact: boolean): void { }
 	isSecondarySideBarVisible(): boolean { return false; }
 	toggleSecondarySideBar(): void { }
 	isPanelHidden(): boolean { return false; }

@@ -11,6 +11,7 @@ import { onDidChangeFullscreen, isFullscreen, isWCOEnabled } from '../../base/br
 import { isWindows, isLinux, isMacintosh, isWeb, isIOS } from '../../base/common/platform.js';
 import { EditorInputCapabilities, GroupIdentifier, isResourceEditorInput, IUntypedEditorInput, pathsToEditors } from '../common/editor.js';
 import { SidebarPart } from './parts/sidebar/sidebarPart.js';
+import { SIDEBAR_LAST_EXPANDED_SIZE_DEFAULT } from './parts/sidebar/theaSidebarChrome.js';
 import { PanelPart } from './parts/panel/panelPart.js';
 import { Position, Parts, PartOpensMaximizedOptions, IWorkbenchLayoutService, positionFromString, positionToString, partOpensMaximizedFromString, PanelAlignment, ActivityBarPosition, LayoutSettings, MULTI_WINDOW_PARTS, SINGLE_WINDOW_PARTS, ZenModeSettings, EditorTabsMode, EditorActionsLocation, shouldShowCustomTitleBar, isHorizontal, isMultiWindowPart, IPartVisibilityChangeEvent, isFloatingTopEdgeExposed, ModernUIDensity } from '../services/layout/browser/layoutService.js';
 import { isTemporaryWorkspace, IWorkspaceContextService, WorkbenchState } from '../../platform/workspace/common/workspace.js';
@@ -117,7 +118,8 @@ enum LayoutClasses {
 	MODERN_UI = 'modern-ui',
 	MODERN_UI_COMPACT = 'modern-ui-compact',
 	// Module-specific gate shared with the Agents workbench.
-	MODERN_UI_TABS = 'modern-ui-tabs'
+	MODERN_UI_TABS = 'modern-ui-tabs',
+	SIDEBAR_COMPACT = 'compact-sidebar'
 }
 
 interface IPathToOpen extends IPath {
@@ -197,6 +199,9 @@ export abstract class Layout extends Disposable implements IWorkbenchLayoutServi
 
 	private readonly _onDidChangeActiveContainer = this._register(new Emitter<void>());
 	readonly onDidChangeActiveContainer = this._onDidChangeActiveContainer.event;
+
+	private readonly _onDidChangeSideBarCompact = this._register(new Emitter<boolean>());
+	readonly onDidChangeSideBarCompact = this._onDidChangeSideBarCompact.event;
 
 	//#endregion
 
@@ -1721,9 +1726,11 @@ export abstract class Layout extends Disposable implements IWorkbenchLayoutServi
 		this._register(this.storageService.onWillSaveState(() => {
 
 			// Side Bar Size
-			const sideBarSize = this.stateModel.getRuntimeValue(LayoutStateKeys.SIDEBAR_HIDDEN)
-				? this.workbenchGrid.getViewCachedVisibleSize(this.sideBarPartView)
-				: this.workbenchGrid.getViewSize(this.sideBarPartView).width;
+			const sideBarSize = this.stateModel.getRuntimeValue(LayoutStateKeys.SIDEBAR_COMPACT)
+				? this.stateModel.getRuntimeValue(LayoutStateKeys.SIDEBAR_LAST_EXPANDED_SIZE)
+				: this.stateModel.getRuntimeValue(LayoutStateKeys.SIDEBAR_HIDDEN)
+					? this.workbenchGrid.getViewCachedVisibleSize(this.sideBarPartView)
+					: this.workbenchGrid.getViewSize(this.sideBarPartView).width;
 			this.stateModel.setInitializationValue(LayoutStateKeys.SIDEBAR_SIZE, sideBarSize as number);
 
 			// Panel Size
@@ -1940,6 +1947,7 @@ export abstract class Layout extends Disposable implements IWorkbenchLayoutServi
 			this.isFloatingPanelsEnabled() ? LayoutClasses.MODERN_UI : undefined,
 			this.isModernUICompact() ? LayoutClasses.MODERN_UI_COMPACT : undefined,
 			this.isFloatingPanelsEnabled() ? LayoutClasses.MODERN_UI_TABS : undefined,
+			this.isSideBarCompact() ? LayoutClasses.SIDEBAR_COMPACT : undefined,
 			`panel-position-${positionToString(this.getPanelPosition())}`,
 			`panel-alignment-${this.getPanelAlignment()}`
 		]);
@@ -1948,6 +1956,11 @@ export abstract class Layout extends Disposable implements IWorkbenchLayoutServi
 	private setSideBarHidden(hidden: boolean): void {
 		if (!hidden && this.setAuxiliaryBarMaximized(false) && this.isVisible(Parts.SIDEBAR_PART)) {
 			return; // return: leaving maximised auxiliary bar made this part visible
+		}
+
+		if (hidden) {
+			this.stateModel.setRuntimeValue(LayoutStateKeys.SIDEBAR_COMPACT, false);
+			this.mainContainer.classList.remove(LayoutClasses.SIDEBAR_COMPACT);
 		}
 
 		this.stateModel.setRuntimeValue(LayoutStateKeys.SIDEBAR_HIDDEN, hidden);
@@ -2345,6 +2358,45 @@ export abstract class Layout extends Disposable implements IWorkbenchLayoutServi
 		}
 	}
 
+	isSideBarCompact(): boolean {
+		return !!this.stateModel?.getRuntimeValue(LayoutStateKeys.SIDEBAR_COMPACT);
+	}
+
+	setSideBarCompact(compact: boolean): void {
+		if (this.isSideBarCompact() === compact) {
+			return;
+		}
+
+		if (compact && !this.isVisible(Parts.SIDEBAR_PART)) {
+			this.setSideBarHidden(false);
+		}
+
+		if (compact) {
+			try {
+				const currentWidth = this.getSize(Parts.SIDEBAR_PART).width;
+				if (currentWidth > 0) {
+					this.stateModel.setRuntimeValue(LayoutStateKeys.SIDEBAR_LAST_EXPANDED_SIZE, currentWidth);
+				}
+			} catch {
+				// Grid may not be ready during early startup.
+			}
+		}
+
+		this.stateModel.setRuntimeValue(LayoutStateKeys.SIDEBAR_COMPACT, compact);
+		this.mainContainer.classList.toggle(LayoutClasses.SIDEBAR_COMPACT, compact);
+		this._onDidChangeSideBarCompact.fire(compact);
+
+		if (this.workbenchGrid) {
+			const size = this.getSize(Parts.SIDEBAR_PART);
+			if (compact) {
+				this.setSize(Parts.SIDEBAR_PART, { width: 0, height: size.height });
+			} else {
+				const restoreWidth = this.stateModel.getRuntimeValue(LayoutStateKeys.SIDEBAR_LAST_EXPANDED_SIZE) || SIDEBAR_LAST_EXPANDED_SIZE_DEFAULT;
+				this.setSize(Parts.SIDEBAR_PART, { width: restoreWidth, height: size.height });
+			}
+		}
+	}
+
 	toggleSecondarySideBar(): void {
 		const visible = !this.isSecondarySideBarVisible();
 		this.setPartHidden(!visible, Parts.AUXILIARYBAR_PART);
@@ -2704,7 +2756,7 @@ export abstract class Layout extends Disposable implements IWorkbenchLayoutServi
 		const sideBarNode: ISerializedLeafNode = {
 			type: 'leaf',
 			data: { type: Parts.SIDEBAR_PART },
-			size: sideBarSize,
+			size: this.stateModel.getRuntimeValue(LayoutStateKeys.SIDEBAR_COMPACT) ? 0 : sideBarSize,
 			visible: !this.stateModel.getRuntimeValue(LayoutStateKeys.SIDEBAR_HIDDEN)
 		};
 
@@ -2903,6 +2955,8 @@ const LayoutStateKeys = {
 	// Part Visibility
 	ACTIVITYBAR_HIDDEN: new RuntimeStateKey<boolean>('activityBar.hidden', StorageScope.WORKSPACE, StorageTarget.MACHINE, false, true),
 	SIDEBAR_HIDDEN: new RuntimeStateKey<boolean>('sideBar.hidden', StorageScope.WORKSPACE, StorageTarget.MACHINE, false),
+	SIDEBAR_COMPACT: new RuntimeStateKey<boolean>('sideBar.compact', StorageScope.WORKSPACE, StorageTarget.MACHINE, false),
+	SIDEBAR_LAST_EXPANDED_SIZE: new RuntimeStateKey<number>('sideBar.lastExpandedSize', StorageScope.PROFILE, StorageTarget.MACHINE, 300),
 	EDITOR_HIDDEN: new RuntimeStateKey<boolean>('editor.hidden', StorageScope.WORKSPACE, StorageTarget.MACHINE, false),
 	PANEL_HIDDEN: new RuntimeStateKey<boolean>('panel.hidden', StorageScope.WORKSPACE, StorageTarget.MACHINE, true),
 	AUXILIARYBAR_HIDDEN: new RuntimeStateKey<boolean>('auxiliaryBar.hidden', StorageScope.WORKSPACE, StorageTarget.MACHINE, true),

@@ -18,7 +18,6 @@ import { ChatContextKeys, ChatContextKeyExprs } from '../../../common/actions/ch
  * menu by VS Code's menu/toolbar convention.
  *
  * Order layout in the secondary toolbar (existing items annotated):
- *   0    OpenSessionTargetPickerAction        (Copilot CLI - Agent Host)
  *   0.5  OpenDelegationPickerAction
  *   0.6  OpenWorkspacePickerAction
  *   0.7  OpenAgentHostModePickerAction        (NEW — Mode)

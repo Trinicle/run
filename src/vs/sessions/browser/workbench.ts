@@ -301,6 +301,7 @@ export class Workbench extends Disposable implements IAgentWorkbenchLayoutServic
 
 	private readonly _onDidChangeAuxiliaryBarMaximized = this._register(new Emitter<void>());
 	readonly onDidChangeAuxiliaryBarMaximized = this._onDidChangeAuxiliaryBarMaximized.event;
+	readonly onDidChangeSideBarCompact = Event.None;
 
 	private readonly _onDidChangeEditorMaximized = this._register(new Emitter<void>());
 	readonly onDidChangeEditorMaximized = this._onDidChangeEditorMaximized.event;
@@ -2186,6 +2187,14 @@ export class Workbench extends Disposable implements IAgentWorkbenchLayoutServic
 		alert(visible
 			? localize('auxiliaryBarVisible', "Secondary Side Bar shown")
 			: localize('auxiliaryBarHidden', "Secondary Side Bar hidden"));
+	}
+
+	isSideBarCompact(): boolean {
+		return false;
+	}
+
+	setSideBarCompact(_compact: boolean): void {
+		// The sessions workbench does not use compact explorer chrome.
 	}
 
 	isSecondarySideBarVisible(): boolean {

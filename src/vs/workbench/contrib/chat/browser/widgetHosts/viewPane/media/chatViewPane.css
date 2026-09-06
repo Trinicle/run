@@ -3,6 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+@import './chatSessionTabsControl.css';
+
 .voice-transcript-overlay-scrollable {
 	position: absolute !important;
 	top: 0;
@@ -87,143 +89,54 @@
 	}
 }
 
-/* Sessions control: either sidebar or stacked */
-.chat-viewpane.has-sessions-control .agent-sessions-container {
-	display: flex;
-	flex-direction: column;
-
-	.agent-sessions-title-container {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		font-size: 11px;
-		font-weight: 700;
-		text-transform: uppercase;
-
-		.agent-sessions-title {
-			cursor: pointer;
-			overflow: hidden;
-			text-overflow: ellipsis;
-			white-space: nowrap;
-		}
-	}
-
-	.agent-sessions-toolbar {
-
-		.action-item {
-			/* align with the title actions*/
-			margin-right: 4px;
-		}
-
-		&.filtered .action-label.codicon.codicon-filter {
-			/* indicate when sessions filter is enabled */
-			border-color: var(--vscode-inputOption-activeBorder);
-			color: var(--vscode-inputOption-activeForeground);
-			background-color: var(--vscode-inputOption-activeBackground);
-		}
-	}
+.monaco-workbench .part.auxiliarybar:has(> .title.thea-chat-session-tabs),
+.monaco-workbench .part.sidebar:has(> .title.thea-chat-session-tabs),
+.monaco-workbench .part.panel:has(> .title.thea-chat-session-tabs) {
+	background-color: var(--vscode-editor-background) !important;
 }
 
-/* Sessions control: stacked */
-.chat-viewpane.has-sessions-control.sessions-control-orientation-stacked {
-
-	.agent-sessions-container {
-		/* center it above the chat which has this max-width restriction */
-		max-width: 950px;
-		margin: 0 auto;
-		width: 100%;
-	}
-
-	.agent-sessions-new-button-container {
-		/* hide new session button when stacked */
-		display: none;
-	}
+.monaco-workbench .part.auxiliarybar:has(> .title.thea-chat-session-tabs) {
+	border-left-width: 1px !important;
+	border-left-style: solid !important;
+	border-left-color: var(--vscode-editorOverviewRuler-border) !important;
 }
 
-/* Sessions control: side by side */
-.chat-viewpane.has-sessions-control.sessions-control-orientation-sidebyside {
-
-	&.chat-view-position-left > .voice-agent-controls-wrapper {
-		flex-direction: row;
-
-		.agent-sessions-container {
-			border-right: 1px solid var(--vscode-panel-border);
-		}
-	}
-
-	&.chat-view-position-right > .voice-agent-controls-wrapper {
-		flex-direction: row-reverse;
-
-		.agent-sessions-container {
-			border-left: 1px solid var(--vscode-panel-border);
-		}
-	}
-
-	.agent-sessions-new-button-container {
-		padding: 8px;
-	}
+.monaco-workbench .part.auxiliarybar:has(> .title.thea-chat-session-tabs) > .content,
+.monaco-workbench .part.sidebar:has(> .title.thea-chat-session-tabs) > .content,
+.monaco-workbench .part.panel:has(> .title.thea-chat-session-tabs) > .content {
+	background-color: var(--vscode-editor-background);
 }
 
-/* Sessions control: panel location */
-.chat-viewpane.has-sessions-control.chat-view-location-panel {
-
-	.agent-sessions-new-button-container {
-		/* hide new session button in the panel considering less vertical space */
-		display: none !important;
-	}
+.chat-viewpane,
+.chat-viewpane-container,
+.chat-viewpane .voice-agent-controls-wrapper,
+.chat-viewpane .chat-controls-container {
+	background-color: var(--vscode-editor-background);
 }
 
-/*
- * Padding rules for agent sessions elements based on:
- * - orientation (stacked vs sidebyside)
- * - view position (left vs right)
- * - activity bar location (default vs other for auxiliarybar)
- */
-.chat-viewpane.has-sessions-control {
+.monaco-workbench .part.auxiliarybar:has(> .title.thea-chat-session-tabs) > .content .monaco-editor,
+.monaco-workbench .part.auxiliarybar:has(> .title.thea-chat-session-tabs) > .content .monaco-editor .margin,
+.monaco-workbench .part.auxiliarybar:has(> .title.thea-chat-session-tabs) > .content .monaco-editor .monaco-editor-background {
+	background-color: var(--vscode-editor-background);
+}
 
-	/* Base padding: left-aligned content */
-	.agent-sessions-title-container {
-		padding: 0 8px 0 20px;
-	}
+.monaco-workbench .chat-viewpane .interactive-session .chat-input-container {
+	border: 1px solid var(--vscode-editorOverviewRuler-border);
+	background-color: var(--vscode-agentsChatInput-background, var(--vscode-input-background));
+}
 
-	.agent-session-section {
-		padding: 0 6px 0 14px;
-	}
+.monaco-workbench .part.auxiliarybar .chat-viewpane .interactive-session .chat-input-container .interactive-input-editor .monaco-editor,
+.monaco-workbench .part.auxiliarybar .chat-viewpane .interactive-session .chat-input-container .interactive-input-editor .monaco-editor .margin,
+.monaco-workbench .part.auxiliarybar .chat-viewpane .interactive-session .chat-input-container .interactive-input-editor .monaco-editor .monaco-editor-background,
+.monaco-workbench .part.sidebar .chat-viewpane .interactive-session .chat-input-container .interactive-input-editor .monaco-editor,
+.monaco-workbench .part.sidebar .chat-viewpane .interactive-session .chat-input-container .interactive-input-editor .monaco-editor .margin,
+.monaco-workbench .part.sidebar .chat-viewpane .interactive-session .chat-input-container .interactive-input-editor .monaco-editor .monaco-editor-background,
+.monaco-workbench .part.panel .chat-viewpane .interactive-session .chat-input-container .interactive-input-editor .monaco-editor,
+.monaco-workbench .part.panel .chat-viewpane .interactive-session .chat-input-container .interactive-input-editor .monaco-editor .margin,
+.monaco-workbench .part.panel .chat-viewpane .interactive-session .chat-input-container .interactive-input-editor .monaco-editor .monaco-editor-background {
+	background-color: var(--vscode-agentsChatInput-background, var(--vscode-input-background));
+}
 
-	/* Stacked: symmetric padding */
-	&.sessions-control-orientation-stacked {
-
-		.agent-sessions-empty-filter-message {
-			padding-left: 20px;
-		}
-	}
-
-	/* Right position: symmetric padding */
-	&.sessions-control-orientation-sidebyside.chat-view-position-right {
-
-		.agent-sessions-title-container {
-			padding: 0 8px;
-		}
-
-		.agent-session-section {
-			padding: 0 6px 0 8px;
-		}
-	}
-
-	/* Auxiliarybar with non-default activity bar: tighter title padding */
-	&.activity-bar-location-other.chat-view-location-auxiliarybar {
-
-		.agent-sessions-title-container {
-			padding-right: 4px;
-		}
-
-		/* Right position needs adjusted left padding too */
-		&.sessions-control-orientation-sidebyside.chat-view-position-right {
-
-			.agent-sessions-title-container,
-			.agent-session-section {
-				padding-left: 8px;
-			}
-		}
-	}
+.monaco-workbench .chat-viewpane .interactive-session .chat-input-container.focused {
+	border-color: var(--vscode-focusBorder);
 }

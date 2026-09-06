@@ -168,58 +168,31 @@
 .monaco-workbench .part.titlebar > .titlebar-container > .titlebar-center > .window-title > .command-center .action-item.command-center-center {
 	display: flex;
 	align-items: stretch;
-	color: var(--vscode-commandCenter-foreground);
-	background-color: var(--vscode-commandCenter-background);
-	border: 1px solid var(--vscode-commandCenter-border);
+	color: var(--vscode-titleBar-activeForeground);
+	background-color: transparent;
+	border: none;
 	overflow: hidden;
 	margin: 0 6px;
-	border-radius: var(--vscode-cornerRadius-medium);
 	height: 22px;
-	width: 38vw;
+	width: auto;
 	max-width: 600px;
+	pointer-events: none;
 }
 
-.monaco-workbench .part.titlebar > .titlebar-container > .titlebar-center > .window-title > .command-center .action-item.command-center-center .action-item.command-center-quick-pick {
+.monaco-workbench .part.titlebar > .titlebar-container > .titlebar-center > .window-title > .command-center .action-item.command-center-center .action-item.command-center-folder-label {
 	display: flex;
-	justify-content: start;
+	align-items: center;
+	justify-content: center;
 	overflow: hidden;
 	margin: auto;
 	max-width: 600px;
+	pointer-events: none;
 }
 
-.monaco-workbench .part.titlebar > .titlebar-container > .titlebar-center > .window-title > .command-center .action-item.command-center-center .action-item.command-center-quick-pick .search-icon {
-	font-size: 14px;
-	opacity: .8;
-	margin: auto 3px;
-	color: var(--vscode-commandCenter-foreground);
-}
-
-.monaco-workbench .part.titlebar.inactive > .titlebar-container > .titlebar-center > .window-title > .command-center .action-item.command-center-center .action-item.command-center-quick-pick .search-icon {
-	color: var(--vscode-titleBar-inactiveForeground);
-}
-
-.monaco-workbench .part.titlebar > .titlebar-container > .titlebar-center > .window-title > .command-center .action-item.command-center-center .action-item.command-center-quick-pick .search-label {
+.monaco-workbench .part.titlebar > .titlebar-container > .titlebar-center > .window-title > .command-center .action-item.command-center-center .action-item.command-center-folder-label .search-label {
 	overflow: hidden;
 	text-overflow: ellipsis;
-}
-
-/* Compact mode: left-aligned label, no icon, full width */
-.monaco-workbench .part.titlebar > .titlebar-container > .titlebar-center > .window-title > .command-center .action-item.command-center-center .action-item.command-center-quick-pick.compact-mode {
-	margin: auto auto auto 0;
-	padding-left: 8px;
-	flex: 1;
-}
-
-.monaco-workbench .part.titlebar > .titlebar-container > .titlebar-center > .window-title > .command-center .action-item.command-center-center:has(.compact-mode) > .monaco-toolbar > .monaco-action-bar > .actions-container {
-	margin: 0;
-}
-
-.monaco-workbench .part.titlebar > .titlebar-container > .titlebar-center > .window-title > .command-center .action-item.command-center-center:has(.compact-mode) > .monaco-toolbar {
-	flex: 1;
-}
-
-.monaco-workbench .part.titlebar > .titlebar-container > .titlebar-center > .window-title > .command-center .action-item.command-center-center:has(.compact-mode) > .monaco-toolbar > .monaco-action-bar {
-	width: 100%;
+	white-space: nowrap;
 }
 
 .monaco-workbench .part.titlebar > .titlebar-container > .titlebar-center > .window-title > .command-center .action-item.command-center-center.multiple {
@@ -237,13 +210,6 @@
 
 .monaco-workbench .part.titlebar.inactive > .titlebar-container > .titlebar-center > .window-title > .command-center .action-item.command-center-center {
 	color: var(--vscode-titleBar-inactiveForeground);
-	border-color: var(--vscode-commandCenter-inactiveBorder) !important;
-}
-
-.monaco-workbench .part.titlebar > .titlebar-container > .titlebar-center > .window-title > .command-center .action-item.command-center-center:HOVER {
-	color: var(--vscode-commandCenter-activeForeground);
-	background-color: var(--vscode-commandCenter-activeBackground);
-	border-color: var(--vscode-commandCenter-activeBorder);
 }
 
 /* Menubar */

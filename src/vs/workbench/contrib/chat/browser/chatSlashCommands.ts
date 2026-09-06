@@ -27,7 +27,6 @@ import { getChatSessionType, isUntitledChatSession } from '../common/model/chatU
 import { ACTION_ID_NEW_CHAT } from './actions/chatActions.js';
 import { ChatSubmitAction, OpenModePickerAction, OpenModelPickerAction } from './actions/chatExecuteActions.js';
 import { ManagePluginsAction } from './actions/chatPluginActions.js';
-import { ConfigureToolsAction } from './actions/chatToolActions.js';
 import { IAgentSessionsService } from './agentSessions/agentSessionsService.js';
 import { IAgentHostSessionWorkingDirectoryResolver } from './agentSessions/agentHost/agentHostSessionWorkingDirectoryResolver.js';
 import { toAgentHostBackendSessionUri } from './agentSessions/agentHost/agentHostSessionUri.js';
@@ -123,17 +122,6 @@ export class ChatSlashCommandsContribution extends Disposable {
 			locations: [ChatAgentLocation.Chat],
 		}, async (_promp) => {
 			await commandService.executeCommand(OpenModelPickerAction.ID);
-		}));
-		this._store.add(slashCommandService.registerSlashCommand({
-			command: 'tools',
-			detail: nls.localize('tools', "Configure tools"),
-			sortText: 'z3_tools',
-			executeImmediately: true,
-			silent: true,
-			locations: [ChatAgentLocation.Chat],
-			sessionTypes: [SessionType.Local],
-		}, async () => {
-			await commandService.executeCommand(ConfigureToolsAction.ID);
 		}));
 		this._store.add(slashCommandService.registerSlashCommand({
 			command: 'plugins',

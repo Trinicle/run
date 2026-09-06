@@ -9,7 +9,7 @@ import { ContextKeyService } from '../../../../../../../platform/contextkey/brow
 import { workbenchInstantiationService } from '../../../../../../test/browser/workbenchTestServices.js';
 import { LanguageModelToolsService } from '../../../../browser/tools/languageModelToolsService.js';
 import { IChatService } from '../../../../common/chatService/chatService.js';
-import { ILanguageModelToolsService, IToolData, ToolAndToolSetEnablementMap, ToolDataSource } from '../../../../common/tools/languageModelToolsService.js';
+import { ILanguageModelToolsService, IToolData, ToolDataSource } from '../../../../common/tools/languageModelToolsService.js';
 import { MockChatService } from '../../../common/chatService/mockChatService.js';
 import { ChatSelectedTools } from '../../../../browser/widget/input/chatSelectedTools.js';
 import { constObservable } from '../../../../../../../base/common/observable.js';
@@ -50,10 +50,9 @@ suite('ChatSelectedTools', () => {
 	ensureNoDisposablesAreLeakedInTestSuite();
 
 	const mcpSource: ToolDataSource = { type: 'mcp', label: 'MCP', collectionId: '', definitionId: '', instructions: '', serverLabel: '' };
-	test('Can\'t enable/disable MCP tools directly #18161', () => {
 
+	test('every prompt-referencable tool is enabled', () => {
 		return runWithFakedTimers({}, async () => {
-
 			const toolData1: IToolData = {
 				id: 'testTool1',
 				modelDescription: 'Test Tool 1',
@@ -70,15 +69,6 @@ suite('ChatSelectedTools', () => {
 				source: mcpSource,
 				canBeReferencedInPrompt: true,
 				toolReferenceName: 't2',
-			};
-
-			const toolData3: IToolData = {
-				id: 'testTool3',
-				modelDescription: 'Test Tool 3',
-				displayName: 'Test Tool 3',
-				source: mcpSource,
-				canBeReferencedInPrompt: true,
-				toolReferenceName: 't3',
 			};
 
 			const toolset = toolsService.createToolSet(
@@ -88,35 +78,21 @@ suite('ChatSelectedTools', () => {
 
 			store.add(toolsService.registerToolData(toolData1));
 			store.add(toolsService.registerToolData(toolData2));
-			store.add(toolsService.registerToolData(toolData3));
-
 			store.add(toolset);
 			store.add(toolset.addTool(toolData1));
 			store.add(toolset.addTool(toolData2));
-			store.add(toolset.addTool(toolData3));
 
-			assert.strictEqual(Iterable.length(toolsService.getTools(undefined)), 3);
+			assert.strictEqual(Iterable.length(toolsService.getTools(undefined)), 2);
 
-			const size = Iterable.length(toolset.getTools());
-			assert.strictEqual(size, 3);
-
-			await timeout(1000); // UGLY the tools service updates its state sync but emits the event async (750ms) delay. This affects the observable that depends on the event
-
-			assert.strictEqual(selectedTools.entriesMap.get().size, 8); // 1 toolset (+4 vscode, execute, read, agent toolsets), 3 tools
-
-			const toSet = ToolAndToolSetEnablementMap.fromEntries([[toolData1, true], [toolData2, false], [toolData3, false], [toolset, false]]);
-			selectedTools.set(toSet, false);
+			await timeout(1000); // tools service emits the tools-changed event async (750ms)
 
 			const userSelectedTools = selectedTools.userSelectedTools.get();
-			assert.strictEqual(Object.keys(userSelectedTools).length, 3); // 3 tools
-
 			assert.strictEqual(userSelectedTools[toolData1.id], true);
-			assert.strictEqual(userSelectedTools[toolData2.id], false);
-			assert.strictEqual(userSelectedTools[toolData3.id], false);
+			assert.strictEqual(userSelectedTools[toolData2.id], true);
 		});
 	});
 
-	test('Can still enable/disable user toolsets #251640', () => {
+	test('user toolset tools stay enabled', () => {
 		return runWithFakedTimers({}, async () => {
 			const toolData1: IToolData = {
 				id: 'testTool1',
@@ -136,15 +112,6 @@ suite('ChatSelectedTools', () => {
 				toolReferenceName: 't2',
 			};
 
-			const toolData3: IToolData = {
-				id: 'testTool3',
-				modelDescription: 'Test Tool 3',
-				displayName: 'Test Tool 3',
-				source: ToolDataSource.Internal,
-				canBeReferencedInPrompt: true,
-				toolReferenceName: 't3',
-			};
-
 			const toolset = toolsService.createToolSet(
 				{ type: 'user', label: 'User Toolset', file: URI.file('/userToolset.json') },
 				'userToolset', 'userToolset'
@@ -152,37 +119,19 @@ suite('ChatSelectedTools', () => {
 
 			store.add(toolsService.registerToolData(toolData1));
 			store.add(toolsService.registerToolData(toolData2));
-			store.add(toolsService.registerToolData(toolData3));
-
 			store.add(toolset);
 			store.add(toolset.addTool(toolData1));
 			store.add(toolset.addTool(toolData2));
-			store.add(toolset.addTool(toolData3));
 
-			assert.strictEqual(Iterable.length(toolsService.getTools(undefined)), 3);
-
-			const size = Iterable.length(toolset.getTools());
-			assert.strictEqual(size, 3);
-
-			await timeout(1000); // UGLY the tools service updates its state sync but emits the event async (750ms) delay. This affects the observable that depends on the event
-
-			assert.strictEqual(selectedTools.entriesMap.get().size, 8); // 1 toolset (+4 vscode, execute, read, agent toolsets), 3 tools
-
-			// Toolset is checked, tools 2 and 3 are unchecked
-			const toSet = ToolAndToolSetEnablementMap.fromEntries([[toolData1, true], [toolData2, false], [toolData3, false], [toolset, true]]);
-			selectedTools.set(toSet, false);
+			await timeout(1000);
 
 			const userSelectedTools = selectedTools.userSelectedTools.get();
-			assert.strictEqual(Object.keys(userSelectedTools).length, 3); // 3 tools
-
-			// User toolset is enabled - all tools are enabled
 			assert.strictEqual(userSelectedTools[toolData1.id], true);
 			assert.strictEqual(userSelectedTools[toolData2.id], true);
-			assert.strictEqual(userSelectedTools[toolData3.id], true);
 		});
 	});
 
-	test('Can disable a tool from a hidden tool set #324006', () => {
+	test('tools from a hidden tool set stay enabled', () => {
 		return runWithFakedTimers({}, async () => {
 			const toolData1: IToolData = {
 				id: 'testTool1',
@@ -202,9 +151,6 @@ suite('ChatSelectedTools', () => {
 				toolReferenceName: 't2',
 			};
 
-			// A tool set that is hidden from the tools picker (e.g. a built-in client tool set).
-			// The user can not toggle it, so it always resolves to enabled and must not force its
-			// member tools back on when they are individually disabled.
 			const toolset = toolsService.createToolSet(
 				ToolDataSource.Internal,
 				'hiddenToolSet', 'hiddenToolSet',
@@ -213,23 +159,15 @@ suite('ChatSelectedTools', () => {
 
 			store.add(toolsService.registerToolData(toolData1));
 			store.add(toolsService.registerToolData(toolData2));
-
 			store.add(toolset);
 			store.add(toolset.addTool(toolData1));
 			store.add(toolset.addTool(toolData2));
 
-			await timeout(1000); // UGLY the tools service updates its state sync but emits the event async (750ms) delay. This affects the observable that depends on the event
-
-			// Disable tool 2 individually. The hidden tool set has no stored state (the picker
-			// never surfaces it), so it defaults to enabled.
-			const toSet = ToolAndToolSetEnablementMap.fromEntries([[toolData1, true], [toolData2, false]]);
-			selectedTools.set(toSet, false);
+			await timeout(1000);
 
 			const userSelectedTools = selectedTools.userSelectedTools.get();
-
-			// The individually disabled tool stays disabled even though its owning tool set resolves to enabled.
 			assert.strictEqual(userSelectedTools[toolData1.id], true);
-			assert.strictEqual(userSelectedTools[toolData2.id], false);
+			assert.strictEqual(userSelectedTools[toolData2.id], true);
 		});
 	});
 });

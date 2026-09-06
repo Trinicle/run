@@ -80,6 +80,13 @@ export class NewChatAction extends Action2 {
 					group: 'z_clear'
 				},
 				{
+					id: MenuId.ViewTitle,
+					group: 'navigation',
+					order: -1,
+					when: ContextKeyExpr.equals('view', ChatViewId),
+					precondition: null,
+				},
+				{
 					id: MenuId.ChatNewMenu,
 					group: '1_open',
 					order: 1,
@@ -113,17 +120,6 @@ export class NewChatAction extends Action2 {
 }
 
 export function registerNewChatActions() {
-
-	// Add "New Chat" submenu to Chat view menu
-	MenuRegistry.appendMenuItem(MenuId.ViewTitle, {
-		submenu: MenuId.ChatNewMenu,
-		title: localize2('chat.newEdits.label', "New Chat"),
-		icon: Codicon.plus,
-		when: ContextKeyExpr.equals('view', ChatViewId),
-		group: 'navigation',
-		order: -1,
-		isSplitButton: true
-	});
 
 	registerAction2(class NewChatEditorAction extends Action2 {
 		constructor() {

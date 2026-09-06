@@ -91,7 +91,7 @@ import { AccessibilityCommandId } from '../../../../accessibility/common/accessi
 import { getSimpleCodeEditorWidgetOptions, getSimpleEditorOptions, setupSimpleEditorSelectionStyling } from '../../../../codeEditor/browser/simpleEditorOptions.js';
 import { IChatViewTitleActionContext } from '../../../common/actions/chatActions.js';
 import { ChatContextKeys } from '../../../common/actions/chatContextKeys.js';
-import { ChatRequestVariableSet, getImageAttachmentLimit, IChatRequestVariableEntry, isPastedTextArtifact, isAgentHostCompletionVariableEntry, isBrowserViewVariableEntry, isElementVariableEntry, isExplicitFileOrImageVariableEntry, isImageVariableEntry, isNotebookOutputVariableEntry, isPasteVariableEntry, isPromptFileVariableEntry, isPromptTextVariableEntry, isSCMHistoryItemChangeRangeVariableEntry, isSCMHistoryItemChangeVariableEntry, isSCMHistoryItemVariableEntry, isStringVariableEntry, OmittedState } from '../../../common/attachments/chatVariableEntries.js';
+import { ChatRequestVariableSet, getImageAttachmentLimit, IChatRequestVariableEntry, isPastedTextArtifact, isAgentHostCompletionVariableEntry, isBrowserViewVariableEntry, isElementVariableEntry, isExplicitFileOrImageVariableEntry, isImageVariableEntry, isNotebookOutputVariableEntry, isPasteVariableEntry, isPromptFileVariableEntry, isPromptTextVariableEntry, isSCMHistoryItemChangeRangeVariableEntry, isSCMHistoryItemChangeVariableEntry, isSCMHistoryItemVariableEntry, OmittedState } from '../../../common/attachments/chatVariableEntries.js';
 import { ChatMode, getModeNameForTelemetry, IChatMode, IChatModes, IChatModeService } from '../../../common/chatModes.js';
 import { IChatFollowup, IChatPlanReview, IChatQuestionCarousel, IChatService, IChatToolInvocation } from '../../../common/chatService/chatService.js';
 import { IChatSessionProviderOptionGroup, IChatSessionProviderOptionItem, IChatSessionsService, isAgentHostTarget, isIChatSessionFileChange2, localChatSessionType, SessionType } from '../../../common/chatSessionsService.js';
@@ -112,7 +112,7 @@ import { IChatResponseViewModel, isResponseVM } from '../../../common/model/chat
 import { IChatAgentService } from '../../../common/participants/chatAgents.js';
 import { ILanguageModelToolsService } from '../../../common/tools/languageModelToolsService.js';
 import { ChatHistoryNavigator } from '../../../common/widget/chatWidgetHistoryService.js';
-import { ChatEditingSessionSubmitAction, ChatSessionPrimaryPickerAction, ChatSubmitAction, IChatExecuteActionContext, OpenDelegationPickerAction, OpenModelPickerAction, OpenModePickerAction, OpenPermissionPickerAction, OpenSessionTargetPickerAction, OpenWorkspacePickerAction } from '../../actions/chatExecuteActions.js';
+import { ChatEditingSessionSubmitAction, ChatSessionPrimaryPickerAction, ChatSubmitAction, IChatExecuteActionContext, OpenDelegationPickerAction, OpenModelPickerAction, OpenModePickerAction, OpenPermissionPickerAction, OpenWorkspacePickerAction } from '../../actions/chatExecuteActions.js';
 import { ChatVoiceInputModeAction, VoiceInputModeActionViewItem } from '../../voiceInputMode/voiceInputModeActionViewItem.js';
 import { ChatSpeechToTextConnectingAction, ChatSpeechToTextPreparingAction, ToggleChatSpeechToTextAction } from '../../actions/chatSpeechToTextActions.js';
 import { DictationActionViewItem } from '../../speechToText/dictationActionViewItem.js';
@@ -129,7 +129,6 @@ import { ChatAttachmentModel } from '../../attachments/chatAttachmentModel.js';
 import { IChatAttachmentWidgetRegistry } from '../../attachments/chatAttachmentWidgetRegistry.js';
 import { DefaultChatAttachmentWidget, ElementChatAttachmentWidget, FileAttachmentWidget, ImageAttachmentWidget, BrowserViewAttachmentWidget, NotebookCellOutputChatAttachmentWidget, PasteAttachmentWidget, PromptFileAttachmentWidget, PromptTextAttachmentWidget, SCMHistoryItemAttachmentWidget, SCMHistoryItemChangeAttachmentWidget, SCMHistoryItemChangeRangeAttachmentWidget, TerminalCommandAttachmentWidget, ToolSetOrToolItemAttachmentWidget } from '../../attachments/chatAttachmentWidgets.js';
 import { ChatImplicitContexts } from '../../attachments/chatImplicitContext.js';
-import { ImplicitContextAttachmentWidget } from '../../attachments/implicitContextAttachment.js';
 import { IChatWidget, IChatWidgetService, IChatWidgetViewModelChangeEvent, ISessionTypePickerDelegate, isIChatResourceViewContext, isIChatViewViewContext, IWorkspacePickerDelegate } from '../../chat.js';
 import { ChatEditingShowChangesAction, ViewPreviousEditsAction } from '../../chatEditing/chatEditingActions.js';
 import { resizeImage } from '../../chatImageUtils.js';
@@ -174,7 +173,6 @@ import { SessionTypePickerActionItem } from './sessionTargetPickerActionItem.js'
 import { WorkspacePickerActionItem } from './workspacePickerActionItem.js';
 import { ChatContextUsageWidget } from '../../widgetHosts/viewPane/chatContextUsageWidget.js';
 import { Target } from '../../../common/promptSyntax/promptTypes.js';
-import { ConfigureToolsAction } from '../../actions/chatToolActions.js';
 import { InlineCompletionsController } from '../../../../../../editor/contrib/inlineCompletions/browser/controller/inlineCompletionsController.js';
 import { PlaceholderTextContribution } from '../../../../../../editor/contrib/placeholderText/browser/placeholderTextContribution.js';
 
@@ -684,7 +682,6 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 	private permissionWidget: PermissionPickerActionItem | undefined;
 	private readonly permissionWidgetDisposeListener = this._register(new MutableDisposable<IDisposable>());
 	private readonly overflowPickerWidget = this._register(new MutableDisposable<IDisposable>());
-	private sessionTargetWidget: SessionTypePickerActionItem | undefined;
 	private delegationWidget: DelegationSessionPickerActionItem | undefined;
 	private readonly chatSessionPickerWidgets = this._register(new DisposableMap<string, ChatSessionPickerActionItem>());
 	private chatSessionPickerContainer: HTMLElement | undefined;
@@ -1510,10 +1507,6 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 		return level;
 	}
 
-	public openSessionTargetPicker(): void {
-		this.sessionTargetWidget?.show();
-	}
-
 	public openDelegationPicker(): void {
 		this.delegationWidget?.show();
 	}
@@ -1615,7 +1608,6 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 		const chatModes = this.chatModeService.createModes(forSessionResource);
 		this._currentChatModes.value = chatModes;
 		this._currentChatModesObservable.set(chatModes, undefined);
-		this.selectedToolsModel.resetSessionEnablementState();
 		this._chatSessionIsEmpty = isNewConversation(forSessionResource, chatSessionIsEmpty);
 		// A session that was just opened starts with no explicit in-conversation model
 		// pick, so the configured default (e.g. enterprise policy) is again allowed
@@ -3519,7 +3511,6 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 
 		const shorterChatInputActionIds = new Set<string>([
 			OpenModePickerAction.ID,
-			ConfigureToolsAction.ID,
 		]);
 		const getInputActionMinWidth = (action: IAction): number | undefined => {
 			if (shorterChatInputActionIds.has(action.id)) {
@@ -3580,7 +3571,7 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 					const createPicker = () => this.instantiationService.createInstance(ModePickerActionItem, action, delegate, getInputPickerOptions(action.id));
 					inputOverflowPickerHandlers.set(action.id, anchor => showOverflowPicker(createPicker, anchor));
 					return this.modeWidget = createPicker();
-				} else if ((action.id === OpenSessionTargetPickerAction.ID || action.id === OpenDelegationPickerAction.ID) && action instanceof MenuItemAction) {
+				} else if (action.id === OpenDelegationPickerAction.ID && action instanceof MenuItemAction) {
 					// Use provided delegate if available, otherwise create default delegate
 					const delegate: ISessionTypePickerDelegate = this.options.sessionTypePickerDelegate ?? {
 						getActiveSessionProvider: () => {
@@ -3595,14 +3586,12 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 						hasGitRepository: () => this.hasWorkspaceScmRepository(),
 					};
 					const isWelcomeViewMode = !!this.options.sessionTypePickerDelegate?.setActiveSessionProvider;
-					const Picker = (action.id === OpenSessionTargetPickerAction.ID || isWelcomeViewMode) ? SessionTypePickerActionItem : DelegationSessionPickerActionItem;
+					const Picker = isWelcomeViewMode ? SessionTypePickerActionItem : DelegationSessionPickerActionItem;
 					const createPicker = () => this.instantiationService.createInstance(Picker, action, location === ChatWidgetLocation.Editor ? 'editor' : 'sidebar', delegate, getInputPickerOptions(action.id));
 					inputOverflowPickerHandlers.set(action.id, anchor => showOverflowPicker(createPicker, anchor));
 					const picker = createPicker();
 					if (picker instanceof DelegationSessionPickerActionItem) {
 						this.delegationWidget = picker;
-					} else {
-						this.sessionTargetWidget = picker;
 					}
 					return picker;
 				} else if (action.id === ChatSessionPrimaryPickerAction.ID && action instanceof MenuItemAction) {
@@ -3731,7 +3720,6 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 		// floor so icon-only items do not retain empty space from the labeled form.
 		// The tunnel-sharing toggle has no chevron and can collapse further.
 		const secondaryPickerMinWidths = new Map<string, number>([
-			[OpenSessionTargetPickerAction.ID, 22],
 			[OpenDelegationPickerAction.ID, 22],
 			[OpenWorkspacePickerAction.ID, 22],
 			[OpenPermissionPickerAction.ID, 22],
@@ -3788,7 +3776,7 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 					getCompactState(secondaryPickerCompactStates, action.id);
 					return customSecondaryItem;
 				}
-				if ((action.id === OpenSessionTargetPickerAction.ID || action.id === OpenDelegationPickerAction.ID) && action instanceof MenuItemAction) {
+				if (action.id === OpenDelegationPickerAction.ID && action instanceof MenuItemAction) {
 					const delegate: ISessionTypePickerDelegate = this.options.sessionTypePickerDelegate ?? {
 						getActiveSessionProvider: () => {
 							return this.getActiveSessionTypeForDelegation();
@@ -3802,14 +3790,12 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 						hasGitRepository: () => this.hasWorkspaceScmRepository(),
 					};
 					const isWelcomeViewMode = !!this.options.sessionTypePickerDelegate?.setActiveSessionProvider;
-					const Picker = (action.id === OpenSessionTargetPickerAction.ID || isWelcomeViewMode) ? SessionTypePickerActionItem : DelegationSessionPickerActionItem;
+					const Picker = isWelcomeViewMode ? SessionTypePickerActionItem : DelegationSessionPickerActionItem;
 					const createPicker = () => this.instantiationService.createInstance(Picker, action, location === ChatWidgetLocation.Editor ? 'editor' : 'sidebar', delegate, getSecondaryPickerOptions(action.id));
 					secondaryOverflowPickerHandlers.set(action.id, anchor => showOverflowPicker(createPicker, anchor));
 					const picker = createPicker();
 					if (picker instanceof DelegationSessionPickerActionItem) {
 						this.delegationWidget = picker;
-					} else {
-						this.sessionTargetWidget = picker;
 					}
 					return picker;
 				} else if (action.id === OpenWorkspacePickerAction.ID && action instanceof MenuItemAction) {
@@ -4078,44 +4064,8 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 			.map((attachment, index): [number, IChatRequestVariableEntry] => [index, attachment]);
 		const hasAttachments = Boolean(attachments.length);
 
-		// Render implicit context (active editor in Ask mode, or selection)
-		let hasImplicitContext = false;
-		const isSuggestedEnabled = this.configurationService.getValue<boolean>('chat.implicitContext.suggestedContext');
-		const hasVisibleImplicitContext = isSuggestedEnabled
-			? this._implicitContext?.hasValue ?? false
-			: this._implicitContext?.values.some(v => v.enabled || v.isSelection) ?? false;
-		if (this._implicitContext && hasVisibleImplicitContext) {
-			const isAttachmentAlreadyAttached = (targetUri: URI | undefined, targetRange: IRange | undefined, targetHandle: number | undefined): boolean => {
-				return this._attachmentModel.attachments.some(a => {
-					const aUri = URI.isUri(a.value) ? a.value : isLocation(a.value) ? a.value.uri : undefined;
-					const aRange = isLocation(a.value) ? a.value.range : undefined;
-					if (targetHandle !== undefined && isStringVariableEntry(a) && a.handle === targetHandle) {
-						return true;
-					}
-					if (targetUri && aUri && isEqual(targetUri, aUri)) {
-						if (targetRange && aRange) {
-							return Range.equalsRange(targetRange, aRange);
-						}
-						return !targetRange && !aRange;
-					}
-					return false;
-				});
-			};
-			const implicitContextWidget = this.instantiationService.createInstance(
-				ImplicitContextAttachmentWidget,
-				() => this._widget,
-				isAttachmentAlreadyAttached,
-				this._implicitContext,
-				this._contextResourceLabels,
-				this._attachmentModel,
-				container,
-			);
-			store.add(implicitContextWidget);
-			hasImplicitContext = implicitContextWidget.hasRenderedContexts;
-		}
-
-		dom.setVisibility(Boolean(this.options.renderInputToolbarBelowInput || hasAttachments || hasImplicitContext), this.attachmentsContainer);
-		dom.setVisibility(hasAttachments || hasImplicitContext, this.attachedContextContainer);
+		dom.setVisibility(Boolean(this.options.renderInputToolbarBelowInput || hasAttachments), this.attachmentsContainer);
+		dom.setVisibility(hasAttachments, this.attachedContextContainer);
 		if (!attachments.length) {
 			this._indexOfLastAttachedContextDeletedWithKeyboard = -1;
 			this._indexOfLastOpenedContext = -1;

@@ -12,10 +12,9 @@ import { localize } from '../../../../nls.js';
 import { Action2, registerAction2 } from '../../../../platform/actions/common/actions.js';
 import { IActionViewItemService } from '../../../../platform/actions/browser/actionViewItemService.js';
 import { ContextKeyExpr, ContextKeyExpression, IContextKey, IContextKeyService, RawContextKey } from '../../../../platform/contextkey/common/contextkey.js';
+import { ICommandService } from '../../../../platform/commands/common/commands.js';
 import { IInstantiationService, ServicesAccessor } from '../../../../platform/instantiation/common/instantiation.js';
 import { IWorkbenchContribution, registerWorkbenchContribution2, WorkbenchPhase } from '../../../../workbench/common/contributions.js';
-import { AICustomizationManagementEditor } from '../../../../workbench/contrib/chat/browser/aiCustomization/aiCustomizationManagementEditor.js';
-import { AICustomizationManagementEditorInput } from '../../../../workbench/contrib/chat/browser/aiCustomization/aiCustomizationManagementEditorInput.js';
 import { IAICustomizationItemsModel, ItemsModelSection } from '../../../../workbench/contrib/chat/browser/aiCustomization/aiCustomizationItemsModel.js';
 import { IMcpService } from '../../../../workbench/contrib/mcp/common/mcpTypes.js';
 import { ILanguageModelToolsService } from '../../../../workbench/contrib/chat/common/tools/languageModelToolsService.js';
@@ -28,9 +27,8 @@ import { $, append } from '../../../../base/browser/dom.js';
 import { autorun } from '../../../../base/common/observable.js';
 import { Button } from '../../../../base/browser/ui/button/button.js';
 import { defaultButtonStyles } from '../../../../platform/theme/browser/defaultStyles.js';
-import { IEditorService } from '../../../../workbench/services/editor/common/editorService.js';
-import { AICustomizationManagementSection } from '../../../../workbench/contrib/chat/common/aiCustomizationWorkspaceService.js';
 import { ChatContextKeys } from '../../../../workbench/contrib/chat/common/actions/chatContextKeys.js';
+import { AICustomizationManagementSection } from '../../../../workbench/contrib/chat/common/aiCustomizationWorkspaceService.js';
 import { ICustomizationHarnessService } from '../../../../workbench/contrib/chat/common/customizationHarnessService.js';
 import { ISession } from '../../../services/sessions/common/session.js';
 import { ISessionsService } from '../../../services/sessions/browser/sessionsService.js';
@@ -124,32 +122,22 @@ export const CUSTOMIZATION_ITEMS: ICustomizationItemConfig[] = [
 	},
 ];
 
-export async function openCustomizationOverviewPage(editorService: IEditorService, harnessService: ICustomizationHarnessService, sessionsService: ISessionsService): Promise<void> {
+export async function openCustomizationOverviewPage(commandService: ICommandService, harnessService: ICustomizationHarnessService, sessionsService: ISessionsService): Promise<void> {
 	const sessionResource = sessionsService.activeSession.get()?.resource;
 	if (sessionResource) {
 		harnessService.setActiveSession(sessionResource);
 	}
 
-	const input = AICustomizationManagementEditorInput.getOrCreate();
-	input.setTargetLabel(harnessService.getActiveDescriptor().label);
-	const pane = await editorService.openEditor(input, { pinned: true });
-	if (pane instanceof AICustomizationManagementEditor) {
-		pane.showWelcomePage();
-	}
+	await commandService.executeCommand('thea.settings.open');
 }
 
-async function openCustomizationSectionPage(editorService: IEditorService, harnessService: ICustomizationHarnessService, sessionsService: ISessionsService, section: typeof AICustomizationManagementSection[keyof typeof AICustomizationManagementSection]): Promise<void> {
+async function openCustomizationSectionPage(commandService: ICommandService, harnessService: ICustomizationHarnessService, sessionsService: ISessionsService, _section: typeof AICustomizationManagementSection[keyof typeof AICustomizationManagementSection]): Promise<void> {
 	const sessionResource = sessionsService.activeSession.get()?.resource;
 	if (sessionResource) {
 		harnessService.setActiveSession(sessionResource);
 	}
 
-	const input = AICustomizationManagementEditorInput.getOrCreate();
-	input.setTargetLabel(harnessService.getActiveDescriptor().label);
-	const pane = await editorService.openEditor(input, { pinned: true });
-	if (pane instanceof AICustomizationManagementEditor) {
-		pane.selectSectionById(section);
-	}
+	await commandService.executeCommand('thea.settings.open');
 }
 
 /**
@@ -303,7 +291,7 @@ export class CustomizationsToolbarContribution extends Disposable implements IWo
 			}
 			async run(accessor: ServicesAccessor): Promise<void> {
 				await openCustomizationOverviewPage(
-					accessor.get(IEditorService),
+					accessor.get(ICommandService),
 					accessor.get(ICustomizationHarnessService),
 					accessor.get(ISessionsService),
 				);
@@ -340,10 +328,10 @@ export class CustomizationsToolbarContribution extends Disposable implements IWo
 					});
 				}
 				async run(accessor: ServicesAccessor): Promise<void> {
-					const editorService = accessor.get(IEditorService);
+					const commandService = accessor.get(ICommandService);
 					const harnessService = accessor.get(ICustomizationHarnessService);
 					const sessionsService = accessor.get(ISessionsService);
-					await openCustomizationSectionPage(editorService, harnessService, sessionsService, section);
+					await openCustomizationSectionPage(commandService, harnessService, sessionsService, section);
 				}
 			}));
 		}

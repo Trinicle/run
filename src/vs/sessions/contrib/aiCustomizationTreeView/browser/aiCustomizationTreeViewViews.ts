@@ -16,6 +16,7 @@ import { localize } from '../../../../nls.js';
 import { createActionViewItem, getContextMenuActions } from '../../../../platform/actions/browser/menuEntryActionViewItem.js';
 import { IMenuService } from '../../../../platform/actions/common/actions.js';
 import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
+import { ICommandService } from '../../../../platform/commands/common/commands.js';
 import { IContextKey, IContextKeyService, RawContextKey } from '../../../../platform/contextkey/common/contextkey.js';
 import { IContextMenuService } from '../../../../platform/contextview/browser/contextView.js';
 import { IHoverService } from '../../../../platform/hover/browser/hover.js';
@@ -32,8 +33,6 @@ import { PromptsType } from '../../../../workbench/contrib/chat/common/promptSyn
 import { agentIcon, extensionIcon, instructionsIcon, mcpServerIcon, pluginIcon, promptIcon, skillIcon, userIcon, workspaceIcon, builtinIcon } from '../../../../workbench/contrib/chat/browser/aiCustomization/aiCustomizationIcons.js';
 import { AICustomizationItemMenuId } from './aiCustomizationTreeView.js';
 import { AICustomizationManagementSection } from '../../../../workbench/contrib/chat/browser/aiCustomization/aiCustomizationManagement.js';
-import { AICustomizationManagementEditorInput } from '../../../../workbench/contrib/chat/browser/aiCustomization/aiCustomizationManagementEditorInput.js';
-import { AICustomizationManagementEditor } from '../../../../workbench/contrib/chat/browser/aiCustomization/aiCustomizationManagementEditor.js';
 import { IAsyncDataSource, ITreeNode, ITreeRenderer, ITreeContextMenuEvent } from '../../../../base/browser/ui/tree/tree.js';
 import { FuzzyScore } from '../../../../base/common/filters.js';
 import { IListVirtualDelegate } from '../../../../base/browser/ui/list/list.js';
@@ -632,6 +631,7 @@ export class AICustomizationViewPane extends ViewPane {
 		@IHoverService hoverService: IHoverService,
 		@IPromptsService private readonly promptsService: IPromptsService,
 		@IEditorService private readonly editorService: IEditorService,
+		@ICommandService private readonly commandService: ICommandService,
 		@IMenuService private readonly menuService: IMenuService,
 		@ILogService private readonly logService: ILogService,
 		@IWorkspaceContextService private readonly workspaceContextService: IWorkspaceContextService,
@@ -730,11 +730,7 @@ export class AICustomizationViewPane extends ViewPane {
 					resource: e.element.uri,
 				});
 			} else if (e.element && e.element.type === 'link') {
-				const input = AICustomizationManagementEditorInput.getOrCreate();
-				const editor = await this.editorService.openEditor(input, { pinned: true });
-				if (editor instanceof AICustomizationManagementEditor) {
-					editor.selectSectionById(e.element.section);
-				}
+				await this.commandService.executeCommand('thea.settings.open');
 			}
 		}));
 

@@ -40,9 +40,7 @@ const menubarIcon = registerIcon('menuBar', Codicon.layoutMenubar, localize('men
 const activityBarLeftIcon = registerIcon('activity-bar-left', Codicon.layoutActivitybarLeft, localize('activityBarLeft', "Represents the activity bar in the left position"));
 const activityBarRightIcon = registerIcon('activity-bar-right', Codicon.layoutActivitybarRight, localize('activityBarRight', "Represents the activity bar in the right position"));
 const panelLeftIcon = registerIcon('panel-left', Codicon.layoutSidebarLeft, localize('panelLeft', "Represents a side bar in the left position"));
-const panelLeftOffIcon = registerIcon('panel-left-off', Codicon.layoutSidebarLeftOff, localize('panelLeftOff', "Represents a side bar in the left position toggled off"));
 const panelRightIcon = registerIcon('panel-right', Codicon.layoutSidebarRight, localize('panelRight', "Represents side bar in the right position"));
-const panelRightOffIcon = registerIcon('panel-right-off', Codicon.layoutSidebarRightOff, localize('panelRightOff', "Represents side bar in the right position toggled off"));
 const panelIcon = registerIcon('panel-bottom', Codicon.layoutPanel, localize('panelBottom', "Represents the bottom panel"));
 const statusBarIcon = registerIcon('statusBar', Codicon.layoutStatusbar, localize('statusBarIcon', "Represents the status bar"));
 
@@ -323,14 +321,19 @@ export class ToggleSidebarVisibilityAction extends Action2 {
 	run(accessor: ServicesAccessor): void {
 		const layoutService = accessor.get(IWorkbenchLayoutService);
 		const isCurrentlyVisible = layoutService.isVisible(Parts.SIDEBAR_PART);
+		const isCurrentlyCompact = layoutService.isSideBarCompact();
 
-		layoutService.setPartHidden(isCurrentlyVisible, Parts.SIDEBAR_PART);
+		if (!isCurrentlyVisible) {
+			layoutService.setPartHidden(false, Parts.SIDEBAR_PART);
+			layoutService.setSideBarCompact(false);
+			alert(localize('sidebarVisible', "Primary Side Bar shown"));
+			return;
+		}
 
-		// Announce visibility change to screen readers
-		const alertMessage = isCurrentlyVisible
-			? localize('sidebarHidden', "Primary Side Bar hidden")
-			: localize('sidebarVisible', "Primary Side Bar shown");
-		alert(alertMessage);
+		layoutService.setSideBarCompact(!isCurrentlyCompact);
+		alert(isCurrentlyCompact
+			? localize('sidebarVisible', "Primary Side Bar shown")
+			: localize('sidebarCollapsed', "Primary Side Bar collapsed"));
 	}
 }
 
@@ -346,44 +349,6 @@ MenuRegistry.appendMenuItems([
 				title: localize('compositePart.hideSideBarLabel', "Hide Primary Side Bar"),
 			},
 			when: ContextKeyExpr.and(SideBarVisibleContext, ContextKeyExpr.equals('viewContainerLocation', ViewContainerLocationToString(ViewContainerLocation.Sidebar))),
-			order: 2
-		}
-	}, {
-		id: MenuId.LayoutControlMenu,
-		item: {
-			group: 'navigation',
-			command: {
-				id: ToggleSidebarVisibilityAction.ID,
-				title: localize('toggleSideBar', "Toggle Primary Side Bar"),
-				icon: panelLeftOffIcon,
-				toggled: { condition: SideBarVisibleContext, icon: panelLeftIcon }
-			},
-			when: ContextKeyExpr.and(
-				IsAuxiliaryWindowContext.negate(),
-				ContextKeyExpr.or(
-					ContextKeyExpr.equals('config.workbench.layoutControl.type', 'toggles'),
-					ContextKeyExpr.equals('config.workbench.layoutControl.type', 'both')),
-				ContextKeyExpr.equals('config.workbench.sideBar.location', 'left')
-			),
-			order: 0
-		}
-	}, {
-		id: MenuId.LayoutControlMenu,
-		item: {
-			group: 'navigation',
-			command: {
-				id: ToggleSidebarVisibilityAction.ID,
-				title: localize('toggleSideBar', "Toggle Primary Side Bar"),
-				icon: panelRightOffIcon,
-				toggled: { condition: SideBarVisibleContext, icon: panelRightIcon }
-			},
-			when: ContextKeyExpr.and(
-				IsAuxiliaryWindowContext.negate(),
-				ContextKeyExpr.or(
-					ContextKeyExpr.equals('config.workbench.layoutControl.type', 'toggles'),
-					ContextKeyExpr.equals('config.workbench.layoutControl.type', 'both')),
-				ContextKeyExpr.equals('config.workbench.sideBar.location', 'right')
-			),
 			order: 2
 		}
 	}
@@ -1398,19 +1363,6 @@ for (const { active } of [...ToggleVisibilityActions, ...MoveSideBarActions, ...
 	}
 }
 
-/**
- * Matches the title bar's `editorActionsEnabled` getter: true when editor
- * actions render in the title bar (either explicitly, or because tabs are
- * hidden and the location defaults there).
- */
-const EditorActionsInTitleBar = ContextKeyExpr.or(
-	ContextKeyExpr.equals(`config.${LayoutSettings.EDITOR_ACTIONS_LOCATION}`, EditorActionsLocation.TITLEBAR),
-	ContextKeyExpr.and(
-		ContextKeyExpr.equals(`config.${LayoutSettings.EDITOR_ACTIONS_LOCATION}`, EditorActionsLocation.DEFAULT),
-		ContextKeyExpr.equals(`config.${LayoutSettings.EDITOR_TABS_MODE}`, EditorTabsMode.NONE)
-	)
-)!;
-
 registerAction2(class CustomizeLayoutAction extends Action2 {
 
 	private _currentQuickPick?: IQuickPick<IQuickPickItem, { useSeparators: true }>;
@@ -1425,24 +1377,6 @@ registerAction2(class CustomizeLayoutAction extends Action2 {
 				{
 					id: MenuId.LayoutControlMenuSubmenu,
 					group: 'z_end',
-				},
-				{
-					id: MenuId.LayoutControlMenu,
-					when: ContextKeyExpr.and(
-						IsAuxiliaryWindowContext.toNegated(),
-						ContextKeyExpr.equals('config.workbench.layoutControl.type', 'both'),
-						EditorActionsInTitleBar.negate()
-					),
-					group: 'navigation'
-				},
-				{
-					id: MenuId.LayoutControlMenu,
-					when: ContextKeyExpr.and(
-						IsAuxiliaryWindowContext.toNegated(),
-						ContextKeyExpr.equals('config.workbench.layoutControl.type', 'both'),
-						EditorActionsInTitleBar
-					),
-					group: '1_layout'
 				}
 			]
 		});

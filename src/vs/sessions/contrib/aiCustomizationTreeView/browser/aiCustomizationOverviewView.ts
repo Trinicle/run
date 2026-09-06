@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import './media/aiCustomizationManagement.css';
+import './media/aiCustomizationTreeView.css';
 import * as DOM from '../../../../base/browser/dom.js';
 import { CancellationToken } from '../../../../base/common/cancellation.js';
 import { autorun } from '../../../../base/common/observable.js';
@@ -22,12 +22,11 @@ import { IHoverService } from '../../../../platform/hover/browser/hover.js';
 import { ResourceSet } from '../../../../base/common/map.js';
 import { IPromptsService } from '../../../../workbench/contrib/chat/common/promptSyntax/service/promptsService.js';
 import { PromptsType } from '../../../../workbench/contrib/chat/common/promptSyntax/promptTypes.js';
-import { AICustomizationManagementSection, AI_CUSTOMIZATION_MANAGEMENT_EDITOR_ID } from '../../../../workbench/contrib/chat/browser/aiCustomization/aiCustomizationManagement.js';
-import { AICustomizationManagementEditorInput } from '../../../../workbench/contrib/chat/browser/aiCustomization/aiCustomizationManagementEditorInput.js';
+import { AICustomizationManagementSection } from '../../../../workbench/contrib/chat/browser/aiCustomization/aiCustomizationManagement.js';
 import { agentIcon, instructionsIcon, mcpServerIcon, pluginIcon, skillIcon, toolsIcon } from '../../../../workbench/contrib/chat/browser/aiCustomization/aiCustomizationIcons.js';
 import { IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
 import { IAICustomizationWorkspaceService } from '../../../../workbench/contrib/chat/common/aiCustomizationWorkspaceService.js';
-import { IEditorService } from '../../../../workbench/services/editor/common/editorService.js';
+import { ICommandService } from '../../../../platform/commands/common/commands.js';
 import { IMcpService } from '../../../../workbench/contrib/mcp/common/mcpTypes.js';
 import { IAgentPluginService } from '../../../../workbench/contrib/chat/common/plugins/agentPluginService.js';
 import { ILanguageModelToolsService } from '../../../../workbench/contrib/chat/common/tools/languageModelToolsService.js';
@@ -36,10 +35,6 @@ import { AGENT_HOST_COPILOT_CLI_SESSION_TYPE, countEnabledCustomizationTools, IA
 const $ = DOM.$;
 
 export const AI_CUSTOMIZATION_OVERVIEW_VIEW_ID = 'workbench.view.aiCustomizationOverview';
-
-function isWelcomePageEditor(editor: unknown): editor is { showWelcomePage(): void } {
-	return typeof (editor as { showWelcomePage?: unknown })?.showWelcomePage === 'function';
-}
 
 interface ISectionSummary {
 	readonly id: AICustomizationManagementSection;
@@ -72,7 +67,7 @@ export class AICustomizationOverviewView extends ViewPane {
 		@IOpenerService openerService: IOpenerService,
 		@IThemeService themeService: IThemeService,
 		@IHoverService hoverService: IHoverService,
-		@IEditorService private readonly editorService: IEditorService,
+		@ICommandService private readonly commandService: ICommandService,
 		@IPromptsService private readonly promptsService: IPromptsService,
 		@IWorkspaceContextService private readonly workspaceContextService: IWorkspaceContextService,
 		@IAICustomizationWorkspaceService private readonly workspaceService: IAICustomizationWorkspaceService,
@@ -145,7 +140,6 @@ export class AICustomizationOverviewView extends ViewPane {
 			countElement.textContent = `${section.count}`;
 			this.countElements.set(section.id, countElement);
 
-			// Click handler to open the management editor overview
 			this._register(DOM.addDisposableListener(sectionElement, 'click', () => {
 				this.openOverview();
 			}));
@@ -160,7 +154,7 @@ export class AICustomizationOverviewView extends ViewPane {
 
 			// Hover tooltip
 			this._register(this.hoverService.setupDelayedHoverAtMouse(sectionElement, () => ({
-				content: localize('openOverview', "Open Chat Customizations editor"),
+				content: localize('openOverview', "Open Thea Settings"),
 				appearance: { compact: true, skipFadeInAnimation: true }
 			})));
 		}
@@ -254,14 +248,7 @@ export class AICustomizationOverviewView extends ViewPane {
 	}
 
 	private async openOverview(): Promise<void> {
-		const input = AICustomizationManagementEditorInput.getOrCreate();
-		const editor = await this.editorService.openEditor(input, { pinned: true });
-
-		// Always reset to the welcome page when opening from the sidebar,
-		// so we don't restore the previously selected section.
-		if (editor?.getId() === AI_CUSTOMIZATION_MANAGEMENT_EDITOR_ID && isWelcomePageEditor(editor)) {
-			editor.showWelcomePage();
-		}
+		await this.commandService.executeCommand('thea.settings.open');
 	}
 
 	protected override layoutBody(height: number, width: number): void {

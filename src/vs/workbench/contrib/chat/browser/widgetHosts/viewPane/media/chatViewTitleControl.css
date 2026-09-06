@@ -82,18 +82,4 @@
 			padding: 0 8px 0 16px;
 		}
 	}
-
-	/* Side-by-side sessions: left position (any activity bar) */
-	&.has-sessions-control.sessions-control-orientation-sidebyside.chat-view-position-left {
-		.chat-view-title-inner {
-			padding: 0 8px;
-		}
-	}
-
-	/* Side-by-side sessions: right position (default activity bar only) */
-	&.activity-bar-location-default.has-sessions-control.sessions-control-orientation-sidebyside.chat-view-position-right {
-		.chat-view-title-inner {
-			padding: 0 8px 0 16px;
-		}
-	}
 }

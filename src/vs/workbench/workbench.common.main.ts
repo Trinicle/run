@@ -250,6 +250,8 @@ import './contrib/replNotebook/browser/repl.contribution.js';
 // Testing
 import './contrib/testing/browser/testing.contribution.js';
 
+import './contrib/theaChrome/browser/theaChrome.contribution.js';
+
 // Logs
 import './contrib/logs/common/logs.contribution.js';
 

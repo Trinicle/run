@@ -246,12 +246,6 @@
 	margin-right: 0px;
 }
 
-.modern-ui.monaco-workbench .chat-viewpane.has-sessions-control .agent-sessions-container {
-	.agent-sessions-title-container {
-		padding: 0 0 var(--vscode-spacing-size40) var(--vscode-spacing-size120);
-	}
-}
-
 /* Give the settings / profile (global) actions at the bottom of the default
  * vertical activity bar a 4px bottom margin so they sit consistently above the
  * window edge, matching the pane header margins. */

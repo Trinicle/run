@@ -9,7 +9,7 @@ import { ThemeIcon } from '../../../../base/common/themables.js';
 import { URI } from '../../../../base/common/uri.js';
 import * as nls from '../../../../nls.js';
 import { registerIcon } from '../../../../platform/theme/common/iconRegistry.js';
-import { IUntypedEditorInput } from '../../../common/editor.js';
+import { EditorInputCapabilities, IUntypedEditorInput } from '../../../common/editor.js';
 import { EditorInput } from '../../../common/editor/editorInput.js';
 import { IPreferencesService } from './preferences.js';
 import { Settings2EditorModel } from './preferencesModels.js';
@@ -32,6 +32,10 @@ export class SettingsEditor2Input extends EditorInput {
 		super();
 
 		this._settingsModel = _preferencesService.createSettings2EditorModel();
+	}
+
+	override get capabilities(): EditorInputCapabilities {
+		return EditorInputCapabilities.Readonly | EditorInputCapabilities.NeverModal;
 	}
 
 	override matches(otherInput: EditorInput | IUntypedEditorInput): boolean {
@@ -71,6 +75,10 @@ export class PreferencesEditorInput extends EditorInput {
 		scheme: Schemas.vscodeSettings,
 		path: `preferenceseditor`
 	});
+
+	override get capabilities(): EditorInputCapabilities {
+		return EditorInputCapabilities.Readonly | EditorInputCapabilities.NeverModal;
+	}
 
 	override matches(otherInput: EditorInput | IUntypedEditorInput): boolean {
 		return super.matches(otherInput) || otherInput instanceof PreferencesEditorInput;

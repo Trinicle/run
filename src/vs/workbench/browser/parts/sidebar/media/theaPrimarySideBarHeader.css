@@ -1,0 +1,76 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.monaco-workbench .part.titlebar > .titlebar-container > .titlebar-left > .window-appicon {
+	display: none;
+}
+
+.monaco-workbench .part.titlebar > .titlebar-container > .titlebar-left > .thea-primary-sidebar-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	height: 100%;
+	flex-shrink: 0;
+	min-width: 0;
+	overflow: hidden;
+	order: 1;
+	z-index: 2500;
+	box-sizing: border-box;
+	padding: 0 8px;
+	gap: 8px;
+	-webkit-app-region: no-drag;
+}
+
+.thea-primary-sidebar-header-tabs {
+	display: flex;
+	align-items: center;
+	flex: 0 0 auto;
+	gap: 2px;
+}
+
+.thea-primary-sidebar-header-tab {
+	flex: 0 0 auto;
+	border: none;
+	background: transparent;
+	color: var(--vscode-titleBar-inactiveForeground, var(--vscode-foreground));
+	border-radius: 6px;
+	padding: 0 10px;
+	height: 22px;
+	cursor: pointer;
+	font-size: 12px;
+	line-height: 22px;
+	white-space: nowrap;
+}
+
+.thea-primary-sidebar-header-tab.active {
+	background: var(--vscode-toolbar-hoverBackground, rgba(255, 255, 255, 0.08));
+	color: var(--vscode-titleBar-activeForeground, var(--vscode-foreground));
+}
+
+.thea-primary-sidebar-header-actions {
+	display: flex;
+	align-items: center;
+	flex-shrink: 0;
+	gap: 2px;
+}
+
+.thea-primary-sidebar-header-action {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 22px;
+	height: 22px;
+	border: none;
+	background: transparent;
+	color: var(--vscode-icon-foreground, var(--vscode-foreground));
+	cursor: pointer;
+	border-radius: 4px;
+	padding: 0;
+}
+
+.thea-primary-sidebar-header-action:hover,
+.thea-primary-sidebar-header-tab:hover {
+	background: var(--vscode-toolbar-hoverBackground, rgba(255, 255, 255, 0.08));
+}

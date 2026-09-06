@@ -14,7 +14,7 @@ import { DEFAULT_EDITOR_ASSOCIATION, isEditorInput, IUntypedEditorInput } from '
 import { EditorInput } from '../../../../common/editor/editorInput.js';
 import { IJSONEditingService } from '../../../configuration/common/jsonEditing.js';
 import { TestJSONEditingService } from '../../../configuration/test/common/testServices.js';
-import { IEditorService, MODAL_GROUP, PreferredGroup } from '../../../editor/common/editorService.js';
+import { IEditorService, ACTIVE_GROUP, PreferredGroup } from '../../../editor/common/editorService.js';
 import { IEditorGroupsService, IModalEditorPart } from '../../../editor/common/editorGroupsService.js';
 import { PreferencesService } from '../../browser/preferencesService.js';
 import { IPreferencesService, ISettingsEditorOptions } from '../../common/preferences.js';
@@ -74,6 +74,14 @@ suite('PreferencesService', () => {
 		assert.strictEqual(options.query, 'test query');
 	});
 
+	test('opens settings in the active editor group, not as a modal', async () => {
+		const testObject = createTestObject();
+
+		await testObject.openUserSettings({ jsonEditor: false });
+
+		assert.strictEqual(lastOpenEditorGroup, ACTIVE_GROUP);
+	});
+
 	test('opens in the source group when it lives in the main editor part (even with modal editors enabled)', async () => {
 		const mainGroup = new TestEditorGroupView(1);
 		const testObject = createTestObject(new TestEditorGroupsService([mainGroup]));
@@ -83,20 +91,19 @@ suite('PreferencesService', () => {
 		assert.strictEqual(lastOpenEditorGroup, mainGroup);
 	});
 
-	test('opens in the modal group when the source group lives in the modal editor part', async () => {
+	test('opens in the main editor part when the source group lives in the modal editor part', async () => {
+		const mainGroup = new TestEditorGroupView(1);
 		const modalGroup = new TestEditorGroupView(2);
 		const modalEditorPart = { groups: [modalGroup] } as Partial<IModalEditorPart> as IModalEditorPart;
 		const editorGroupsService = new class extends TestEditorGroupsService {
 			override readonly activeModalEditorPart = modalEditorPart;
-		}([modalGroup]);
+		}([mainGroup, modalGroup]);
 
-		// Modal editors are turned off in settings to prove the routing comes from the
-		// active modal editor part the action was invoked from and not from the modal default.
-		const configurationService = new TestConfigurationService({ workbench: { editor: { useModal: 'off' } } });
+		const configurationService = new TestConfigurationService({ workbench: { editor: { useModal: 'some' } } });
 		const testObject = createTestObject(editorGroupsService, configurationService);
 
 		await testObject.openUserSettings({ jsonEditor: false, groupId: modalGroup.id });
 
-		assert.strictEqual(lastOpenEditorGroup, MODAL_GROUP);
+		assert.strictEqual(lastOpenEditorGroup, mainGroup);
 	});
 });

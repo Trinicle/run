@@ -2315,7 +2315,7 @@ function isValidChatPayload(messages: Raw.ChatMessage[], postOptions: OptionalCh
 	}
 
 	if (postOptions?.tools && postOptions.tools.length > HARD_TOOL_LIMIT && !endpoint.supportsToolSearch) {
-		return { isValid: false, reason: `Tool limit exceeded (${postOptions.tools.length}/${HARD_TOOL_LIMIT}). Click "Configure Tools" in the chat input to disable ${postOptions.tools.length - HARD_TOOL_LIMIT} tools and retry.` };
+		return { isValid: false, reason: `Tool limit exceeded (${postOptions.tools.length}/${HARD_TOOL_LIMIT}).` };
 	}
 
 	return { isValid: true, reason: '' };

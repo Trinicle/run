@@ -996,5 +996,46 @@ suite('Modal Editor Group', () => {
 		});
 	});
 
+	suite('NeverModal capability', () => {
+
+		test('findGroup opens NeverModal editors in the main editor even when useModal is all', async () => {
+			const instantiationService = workbenchInstantiationService({ contextKeyService: instantiationService => instantiationService.createInstance(MockScopableContextKeyService) }, disposables);
+			instantiationService.invokeFunction(accessor => Registry.as<IEditorFactoryRegistry>(EditorExtensions.EditorFactory).start(accessor));
+			const configurationService = new TestConfigurationService();
+			await configurationService.setUserConfiguration('workbench.editor.useModal', 'all');
+			instantiationService.stub(IConfigurationService, configurationService);
+			const parts = await createEditorParts(instantiationService, disposables);
+			instantiationService.stub(IEditorGroupsService, parts);
+
+			const input = createTestFileEditorInput(URI.file('foo/settings'), TEST_EDITOR_INPUT_ID);
+			input.capabilities = EditorInputCapabilities.NeverModal;
+
+			const result = instantiationService.invokeFunction(accessor => findGroup(accessor, { editor: input, options: {} }, undefined));
+			const [group] = result instanceof Promise ? await result : result;
+
+			assert.strictEqual(parts.activeModalEditorPart, undefined);
+			assert.strictEqual(group.id, parts.mainPart.activeGroup.id);
+		});
+
+		test('findGroup ignores MODAL_GROUP for NeverModal editors', async () => {
+			const instantiationService = workbenchInstantiationService({ contextKeyService: instantiationService => instantiationService.createInstance(MockScopableContextKeyService) }, disposables);
+			instantiationService.invokeFunction(accessor => Registry.as<IEditorFactoryRegistry>(EditorExtensions.EditorFactory).start(accessor));
+			const configurationService = new TestConfigurationService();
+			await configurationService.setUserConfiguration('workbench.editor.useModal', 'some');
+			instantiationService.stub(IConfigurationService, configurationService);
+			const parts = await createEditorParts(instantiationService, disposables);
+			instantiationService.stub(IEditorGroupsService, parts);
+
+			const input = createTestFileEditorInput(URI.file('foo/settings'), TEST_EDITOR_INPUT_ID);
+			input.capabilities = EditorInputCapabilities.NeverModal;
+
+			const result = instantiationService.invokeFunction(accessor => findGroup(accessor, { editor: input, options: {} }, MODAL_GROUP));
+			const [group] = result instanceof Promise ? await result : result;
+
+			assert.strictEqual(parts.activeModalEditorPart, undefined);
+			assert.strictEqual(group.id, parts.mainPart.activeGroup.id);
+		});
+	});
+
 	ensureNoDisposablesAreLeakedInTestSuite();
 });

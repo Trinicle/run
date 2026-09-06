@@ -82,15 +82,3 @@
 .monaco-workbench.modern-ui.floating-panels.modern-ui-compact .part.editor.floating-editor-outer-top {
 	--modern-ui-floating-card-top-border-color: var(--modern-ui-floating-card-stroke-color);
 }
-
-.monaco-workbench.modern-ui .chat-view-position-left > .voice-agent-controls-wrapper {
-	.agent-sessions-container {
-		border-right-color: var(--vscode-surface-border, color-mix(in srgb, var(--vscode-foreground) 12%, transparent)) !important;
-	}
-}
-
-.monaco-workbench.modern-ui .chat-view-position-right > .voice-agent-controls-wrapper {
-	.agent-sessions-container {
-		border-left-color: var(--vscode-surface-border, color-mix(in srgb, var(--vscode-foreground) 12%, transparent)) !important;
-	}
-}

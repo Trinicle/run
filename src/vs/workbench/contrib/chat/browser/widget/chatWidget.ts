@@ -3895,12 +3895,6 @@ export class ChatWidget extends Disposable implements IChatWidget {
 			}
 		}
 
-		// if not tools to enable are present, we are done
-		if (tools !== undefined && this.input.currentModeKind === ChatModeKind.Agent) {
-			const enablementMap = this.toolsService.toToolAndToolSetEnablementMap(tools, this.input.selectedLanguageModel.get()?.metadata);
-			this.input.selectedToolsModel.set(enablementMap, true);
-		}
-
 		if (model !== undefined) {
 			return this.input.requestModelByQualifiedName(model);
 		}

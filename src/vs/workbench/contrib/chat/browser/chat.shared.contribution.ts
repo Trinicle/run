@@ -412,7 +412,7 @@ configurationRegistry.registerConfiguration({
 				nls.localize('chat.agentsControl.compact', "Replaces the command center search box with a compact agent status indicator and unified chat widget."),
 			],
 			markdownDescription: nls.localize('chat.agentsControl.enabled', "Controls how the 'Agent Status' indicator appears in the title bar command center. When set to `hidden`, the indicator is not shown. Other values show the indicator and automatically enable {0}. The unread and in-progress session indicators require {1} to be enabled.", '`#window.commandCenter#`', '`#chat.viewSessions.enabled#`'),
-			default: 'compact',
+			default: 'hidden',
 			tags: ['experimental']
 		},
 		[ChatConfiguration.UnifiedAgentsBar]: {
@@ -475,7 +475,7 @@ configurationRegistry.registerConfiguration({
 				]
 			},
 			default: {
-				'panel': 'always',
+				'panel': 'never',
 			},
 			tags: ['experimental'],
 			experiment: {
@@ -486,7 +486,7 @@ configurationRegistry.registerConfiguration({
 		'chat.implicitContext.suggestedContext': {
 			type: 'boolean',
 			markdownDescription: nls.localize('chat.implicitContext.suggestedContext', "Controls whether the new implicit context flow is shown. In Ask and Edit modes, the context will automatically be included. When using an agent, context will be suggested as an attachment. Selections are always included as context."),
-			default: true,
+			default: false,
 			agentsWindow: { default: false },
 		},
 		'chat.implicitContext.includeActiveEditor': {
@@ -935,7 +935,7 @@ configurationRegistry.registerConfiguration({
 		},
 		[ChatConfiguration.ChatViewSessionsEnabled]: {
 			type: 'boolean',
-			default: true,
+			default: false,
 			description: nls.localize('chat.viewSessions.enabled', "Show chat agent sessions when chat is empty or to the side when chat view is wide enough."),
 			agentsWindow: { default: false },
 		},

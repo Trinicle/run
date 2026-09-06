@@ -54,27 +54,12 @@ export type AICustomizationManagementSection = typeof AICustomizationManagementS
 /** Command IDs for the AI Customizations Management Editor. */
 export const AICustomizationManagementCommands = {
 	OpenEditor: 'aiCustomization.openManagementEditor',
-	OpenMarketplace: 'aiCustomization.openMarketplace',
-	CreateNewAgent: 'aiCustomization.createNewAgent',
-	CreateNewSkill: 'aiCustomization.createNewSkill',
-	CreateNewInstructions: 'aiCustomization.createNewInstructions',
-	CreateNewPrompt: 'aiCustomization.createNewPrompt',
-	GenerateDebugReport: 'aiCustomization.generateDebugReport',
 	DismissMigrationHint: 'aiCustomization.dismissMigrationHint',
 } as const;
 
 /** Returns the workspace storage key for a harness-specific migration hint dismissal. */
 export function getCustomizationMigrationHintDismissedStorageKey(sessionType: string): string {
 	return `chat.customizationMigrationHint.dismissed.${sessionType}`;
-}
-
-/**
- * Per-type filter policy controlling which storage sources are visible
- * for a given customization type.
- */
-export interface IWelcomePageFeatures {
-	/** Show the "Configure Your AI" getting-started banner. */
-	readonly showGettingStartedBanner: boolean;
 }
 
 /**
@@ -102,11 +87,6 @@ export interface IAICustomizationWorkspaceService {
 	 * Whether this is a sessions window (vs core VS Code).
 	 */
 	readonly isSessionsWindow: boolean;
-
-	/**
-	 * Controls which features are displayed on the welcome page.
-	 */
-	readonly welcomePageFeatures: IWelcomePageFeatures;
 
 	/**
 	 * Commits files in the active project.

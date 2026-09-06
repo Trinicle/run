@@ -8,6 +8,11 @@
 	visibility: hidden !important;
 }
 
+.monaco-workbench.compact-sidebar > .part.sidebar .content,
+.monaco-workbench.compact-sidebar > .part.sidebar .composite.title {
+	display: none !important;
+}
+
 .monaco-workbench .part.sidebar .title-actions .actions-container {
 	justify-content: flex-end;
 }

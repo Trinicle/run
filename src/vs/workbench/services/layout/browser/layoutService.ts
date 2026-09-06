@@ -515,6 +515,11 @@ export interface IWorkbenchLayoutService extends ILayoutService {
 	readonly onDidChangeAuxiliaryBarMaximized: Event<void>;
 
 	/**
+	 * Emit when the primary side bar compact (content-collapsed) state changes.
+	 */
+	readonly onDidChangeSideBarCompact: Event<boolean>;
+
+	/**
 	 * True if a default layout with default editors was applied at startup
 	 */
 	readonly openedDefaultEditors: boolean;
@@ -578,6 +583,17 @@ export interface IWorkbenchLayoutService extends ILayoutService {
 	 * Set part hidden or not in the target window.
 	 */
 	setPartHidden(hidden: boolean, part: Parts): void;
+
+	/**
+	 * Returns whether the primary side bar is in compact mode (content hidden,
+	 * activity bar still visible).
+	 */
+	isSideBarCompact(): boolean;
+
+	/**
+	 * Collapse or expand the primary side bar content without hiding the activity bar.
+	 */
+	setSideBarCompact(compact: boolean): void;
 
 	/**
 	 * Returns whether the layout surface that represents the secondary sidebar is visible.

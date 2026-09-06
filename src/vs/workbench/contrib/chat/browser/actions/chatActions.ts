@@ -30,7 +30,6 @@ import { IDialogService } from '../../../../../platform/dialogs/common/dialogs.j
 import { IFileService } from '../../../../../platform/files/common/files.js';
 import { IInstantiationService, ServicesAccessor } from '../../../../../platform/instantiation/common/instantiation.js';
 import { KeybindingWeight } from '../../../../../platform/keybinding/common/keybindingsRegistry.js';
-import { ILogService } from '../../../../../platform/log/common/log.js';
 import { INotificationService } from '../../../../../platform/notification/common/notification.js';
 import { IOpenerService } from '../../../../../platform/opener/common/opener.js';
 import product from '../../../../../platform/product/common/product.js';
@@ -58,11 +57,10 @@ import { ISCMHistoryItemChangeRangeVariableEntry, ISCMHistoryItemChangeVariableE
 import { IChatRequestViewModel, IChatResponseViewModel, isRequestVM } from '../../common/model/chatViewModel.js';
 import { IChatWidgetHistoryService } from '../../common/widget/chatWidgetHistoryService.js';
 import { ChatAgentLocation, ChatConfiguration, ChatModeKind, getDefaultNewChatSessionTypeAndReason } from '../../common/constants.js';
-import { AICustomizationManagementCommands } from '../aiCustomization/aiCustomizationManagement.js';
 import { ILanguageModelChatSelector, ILanguageModelsService } from '../../common/languageModels.js';
 import { CopilotUsageExtensionFeatureId } from '../../common/languageModelStats.js';
 import { ILanguageModelToolsConfirmationService } from '../../common/tools/languageModelToolsConfirmationService.js';
-import { ILanguageModelToolsService, IToolData, IToolSet, isToolSet, ToolAndToolSetEnablementMap } from '../../common/tools/languageModelToolsService.js';
+import { ILanguageModelToolsService } from '../../common/tools/languageModelToolsService.js';
 import { ChatViewId, IChatWidget, IChatWidgetService, isIChatViewViewContext } from '../chat.js';
 import { IChatEditorOptions } from '../widgetHosts/editor/chatEditor.js';
 import { ChatEditorInput, showClearEditingSessionConfirmation } from '../widgetHosts/editor/chatEditorInput.js';
@@ -170,26 +168,6 @@ export interface IChatViewOpenOptions {
 	blockOnResponse?: boolean;
 
 	/**
-	 * A list of tool identifiers to include. When specified alone, only these tools will be enabled.
-	 * Identifiers can be tool IDs, tool reference names (`toolReferenceName`),
-	 * toolset IDs, or toolset reference names (`referenceName`).
-	 * When a toolset identifier matches, all tools in that toolset are included.
-	 * Can be combined with `toolsExclude` for fine-grained control.
-	 */
-	toolsInclude?: string[];
-
-	/**
-	 * A list of tool identifiers to exclude. When specified alone, all tools except these will be enabled.
-	 * Identifiers can be tool IDs, tool reference names (`toolReferenceName`),
-	 * toolset IDs, or toolset reference names (`referenceName`).
-	 * When a toolset identifier matches, all tools in that toolset are excluded.
-	 * Can be combined with `toolsInclude` - exclusions are applied after inclusions.
-	 * Explicit tool references in `toolsInclude` override toolset exclusions,
-	 * but explicit tool exclusions always win.
-	 */
-	toolsExclude?: string[];
-
-	/**
 	 * Submits `query` without taking over the input box, keeping any draft the user
 	 * has typed and omitting its attachments from the request. For maintenance
 	 * commands such as `/compact` that are not user messages.
@@ -228,15 +206,14 @@ abstract class OpenChatGlobalAction extends Action2 {
 
 		const chatService = accessor.get(IChatService);
 		const widgetService = accessor.get(IChatWidgetService);
-		const toolsService = accessor.get(ILanguageModelToolsService);
 		const hostService = accessor.get(IHostService);
 		const chatAgentService = accessor.get(IChatAgentService);
 		const instaService = accessor.get(IInstantiationService);
 		const commandService = accessor.get(ICommandService);
 		const fileService = accessor.get(IFileService);
 		const languageModelService = accessor.get(ILanguageModelsService);
+		const toolsService = accessor.get(ILanguageModelToolsService);
 		const scmService = accessor.get(ISCMService);
-		const logService = accessor.get(ILogService);
 		const configurationService = accessor.get(IConfigurationService);
 
 		let chatWidget = widgetService.lastFocusedWidget;
@@ -268,25 +245,6 @@ abstract class OpenChatGlobalAction extends Action2 {
 			}
 
 			chatWidget.input.setCurrentLanguageModel({ metadata: model, identifier: id }, true);
-		}
-
-		if (opts?.toolsInclude || opts?.toolsExclude) {
-			const model = chatWidget.input.selectedLanguageModel.get()?.metadata;
-			const allTools = Array.from(toolsService.getTools(model));
-			const allToolSets = Array.from(toolsService.getToolSetsForModel(model));
-
-			const result = computeToolEnablementMap({
-				allTools,
-				allToolSets,
-				toolsInclude: opts.toolsInclude,
-				toolsExclude: opts.toolsExclude,
-			});
-
-			for (const identifier of result.unknownIdentifiers) {
-				logService.warn(`Tool filtering: Unknown identifier '${identifier}' - no matching tool or toolset found.`);
-			}
-
-			chatWidget.input.selectedToolsModel.set(result.enablementMap, true);
 		}
 
 		if (opts?.previousRequests?.length && chatWidget.viewModel) {
@@ -1535,21 +1493,6 @@ export function registerChatActions() {
 		}
 	});
 
-	// Show a direct gear action to open the Customizations editor
-	MenuRegistry.appendMenuItem(MenuId.ViewTitle, {
-		command: {
-			id: AICustomizationManagementCommands.OpenEditor,
-			title: localize2('openChatCustomizations', "Open Customizations"),
-			category: CHAT_CATEGORY,
-			icon: Codicon.gear
-		},
-		group: 'navigation',
-		when: ContextKeyExpr.and(
-			ChatContextKeys.enabled,
-			ContextKeyExpr.equals('view', ChatViewId),
-		),
-		order: 6
-	});
 }
 
 export function stringifyItem(item: IChatRequestViewModel | IChatResponseViewModel, includeName = true): string {
@@ -1558,167 +1501,6 @@ export function stringifyItem(item: IChatRequestViewModel | IChatResponseViewMod
 	} else {
 		return (includeName ? `${item.username}: ` : '') + item.response.toString();
 	}
-}
-
-export interface IToolFilteringOptions {
-	allTools: IToolData[];
-	allToolSets: IToolSet[];
-	toolsInclude?: string[];
-	toolsExclude?: string[];
-}
-
-export interface IToolFilteringResult {
-	enablementMap: ToolAndToolSetEnablementMap;
-	unknownIdentifiers: string[];
-}
-
-/**
- * Computes the tool enablement map based on include/exclude filters.
- *
- * Resolution algorithm:
- * 1. If `toolsInclude` is specified, start with only those tools/toolsets enabled
- * 2. If `toolsExclude` is specified, remove those tools/toolsets
- * 3. Explicit tool references in `toolsInclude` override toolset exclusions
- * 4. Explicit tool exclusions always win
- * 5. Toolset enablement is calculated based on whether all member tools are enabled
- *
- * @throws Error if filtering results in zero enabled tools
- */
-export function computeToolEnablementMap(options: IToolFilteringOptions): IToolFilteringResult {
-	const { allTools, allToolSets, toolsInclude, toolsExclude } = options;
-
-	const enablementMap = new Map<IToolData | IToolSet, boolean>();
-	const matchedIdentifiers = new Set<string>();
-
-	// Helper to check if a tool matches any identifier (by id or toolReferenceName)
-	const toolMatches = (tool: IToolData, identifiers: Set<string>): boolean => {
-		if (identifiers.has(tool.id)) {
-			matchedIdentifiers.add(tool.id);
-			return true;
-		}
-		if (tool.toolReferenceName && identifiers.has(tool.toolReferenceName)) {
-			matchedIdentifiers.add(tool.toolReferenceName);
-			return true;
-		}
-		return false;
-	};
-
-	// Helper to check if a toolset matches any identifier (by id or referenceName)
-	const toolSetMatches = (toolSet: IToolSet, identifiers: Set<string>): boolean => {
-		if (identifiers.has(toolSet.id)) {
-			matchedIdentifiers.add(toolSet.id);
-			return true;
-		}
-		if (identifiers.has(toolSet.referenceName)) {
-			matchedIdentifiers.add(toolSet.referenceName);
-			return true;
-		}
-		return false;
-	};
-
-	// Track which tools are explicitly referenced in toolsInclude
-	const explicitlyIncludedTools = new Set<IToolData>();
-
-	// Step 1: Build initial set based on toolsInclude
-	if (toolsInclude) {
-		const includeSet = new Set(toolsInclude);
-
-		// First, process toolsets - if a toolset matches, enable all its tools
-		for (const toolSet of allToolSets) {
-			if (toolSetMatches(toolSet, includeSet)) {
-				for (const tool of toolSet.getTools()) {
-					enablementMap.set(tool, true);
-				}
-			}
-		}
-
-		// Then process individual tools
-		for (const tool of allTools) {
-			if (toolMatches(tool, includeSet)) {
-				enablementMap.set(tool, true);
-				explicitlyIncludedTools.add(tool);
-			} else if (!enablementMap.has(tool)) {
-				enablementMap.set(tool, false);
-			}
-		}
-		// Also process tools from toolsets that may not be in allTools
-		for (const toolSet of allToolSets) {
-			for (const tool of toolSet.getTools()) {
-				if (toolMatches(tool, includeSet)) {
-					enablementMap.set(tool, true);
-					explicitlyIncludedTools.add(tool);
-				} else if (!enablementMap.has(tool)) {
-					enablementMap.set(tool, false);
-				}
-			}
-		}
-	} else {
-		// No toolsInclude specified - start with all tools enabled
-		for (const tool of allTools) {
-			enablementMap.set(tool, true);
-		}
-		for (const toolSet of allToolSets) {
-			for (const tool of toolSet.getTools()) {
-				enablementMap.set(tool, true);
-			}
-		}
-	}
-
-	// Step 2: Remove tools matching toolsExclude
-	if (toolsExclude) {
-		const excludeSet = new Set(toolsExclude);
-
-		// First, process toolsets - if a toolset matches, disable all its tools
-		// (unless explicitly included as individual tools)
-		for (const toolSet of allToolSets) {
-			if (toolSetMatches(toolSet, excludeSet)) {
-				for (const tool of toolSet.getTools()) {
-					// Explicit tool reference overrides toolset exclusion
-					if (!explicitlyIncludedTools.has(tool)) {
-						enablementMap.set(tool, false);
-					}
-				}
-			}
-		}
-
-		// Then process individual tools - explicit exclusion always wins
-		for (const tool of allTools) {
-			if (toolMatches(tool, excludeSet)) {
-				enablementMap.set(tool, false);
-			}
-		}
-		for (const toolSet of allToolSets) {
-			for (const tool of toolSet.getTools()) {
-				if (toolMatches(tool, excludeSet)) {
-					enablementMap.set(tool, false);
-				}
-			}
-		}
-	}
-
-	// Collect unknown identifiers
-	const allIdentifiers = new Set([...(toolsInclude ?? []), ...(toolsExclude ?? [])]);
-	const unknownIdentifiers: string[] = [];
-	for (const identifier of allIdentifiers) {
-		if (!matchedIdentifiers.has(identifier)) {
-			unknownIdentifiers.push(identifier);
-		}
-	}
-
-	// Validate at least one tool is enabled
-	const enabledToolCount = Array.from(enablementMap.entries()).filter(([item, enabled]) => enabled && !isToolSet(item)).length;
-	if (enabledToolCount === 0) {
-		throw new Error('Tool filtering resulted in zero enabled tools. At least one tool must be enabled.');
-	}
-
-	// Calculate toolset enablement based on whether all member tools are enabled
-	for (const toolSet of allToolSets) {
-		const toolSetTools = Array.from(toolSet.getTools());
-		const allToolsEnabled = toolSetTools.length > 0 && toolSetTools.every(t => enablementMap.get(t) === true);
-		enablementMap.set(toolSet, allToolsEnabled);
-	}
-
-	return { enablementMap: ToolAndToolSetEnablementMap.fromMap(enablementMap), unknownIdentifiers };
 }
 
 
@@ -1798,10 +1580,9 @@ export async function clearChatSessionPreservingType(accessor: ServicesAccessor,
 			await view.loadSession(URI.from({ scheme: newSessionType, path: `/untitled-${generateUuid()}` }), resolvedSessionType.selectionReason);
 		} else {
 			// The resolved type is local (an explicit request or session
-			// preservation). A plain `widget.clear()` re-acquires the computed
-			// default (a non-local harness when the agent host is enabled), so
-			// start a local session explicitly to honor the resolved type.
-			await view.startNewLocalSession(resolvedSessionType.selectionReason);
+			// preservation). Open another tab instead of replacing the current
+			// session, so `+` can create multiple "New Thea Session" tabs.
+			await view.openNewChatTab(resolvedSessionType.selectionReason);
 		}
 	} else {
 		// For the editor, thread the resolution through the clear path so

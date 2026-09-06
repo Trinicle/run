@@ -32,13 +32,13 @@ suite('MainThreadChatInputNotification', () => {
 		};
 		const mainThread = store.add(new MainThreadChatInputNotification(SingleProxyRPCProtocol(null), notificationService));
 		const extHost = new ExtHostChatInputNotification(SingleProxyRPCProtocol(mainThread));
-		return { notification: extHost.createInputNotification(nullExtensionDescription, 'byokUtilityModelHint'), pushed };
+		return { notification: extHost.createInputNotification(nullExtensionDescription, 'inputNotice'), pushed };
 	}
 
 	test('carries session types across the bridge, defaulting to none', () => {
 		const { notification, pushed } = createBridge();
 
-		notification.message = 'Set BYOK utility models';
+		notification.message = 'Input notice';
 		notification.show();
 		notification.sessionTypes = ['local', 'agent-host-copilotcli'];
 		notification.sessionTypes = undefined;
@@ -53,18 +53,18 @@ suite('MainThreadChatInputNotification', () => {
 	test('maps the notification onto the internal shape', () => {
 		const { notification, pushed } = createBridge();
 
-		notification.message = 'Set BYOK utility models';
-		notification.description = 'Pick the models used for background work.';
-		notification.actions = [{ label: 'Configure', commandId: 'workbench.action.openSettings', commandArgs: ['chat.byokUtilityModelDefault'] }];
+		notification.message = 'Input notice';
+		notification.description = 'A description.';
+		notification.actions = [{ label: 'Configure', commandId: 'workbench.action.openSettings', commandArgs: ['some.setting'] }];
 		notification.sessionTypes = ['local'];
 		notification.show();
 
 		assert.deepStrictEqual(pushed.at(-1), {
-			id: 'nullextensiondescription.byokUtilityModelHint',
+			id: 'nullextensiondescription.inputNotice',
 			severity: ChatInputNotificationSeverity.Info,
-			message: 'Set BYOK utility models',
-			description: 'Pick the models used for background work.',
-			actions: [{ kind: ChatInputNotificationActionKind.Command, label: 'Configure', commandId: 'workbench.action.openSettings', commandArgs: ['chat.byokUtilityModelDefault'] }],
+			message: 'Input notice',
+			description: 'A description.',
+			actions: [{ kind: ChatInputNotificationActionKind.Command, label: 'Configure', commandId: 'workbench.action.openSettings', commandArgs: ['some.setting'] }],
 			dismissible: true,
 			autoDismissOnMessage: false,
 			sessionTypes: ['local'],

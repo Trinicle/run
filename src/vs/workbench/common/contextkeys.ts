@@ -131,6 +131,8 @@ export const EditorTabsVisibleContext = new RawContextKey<boolean>('editorTabsVi
 //#region < --- Side Bar --- >
 
 export const SideBarVisibleContext = new RawContextKey<boolean>('sideBarVisible', false, localize('sideBarVisible', "Whether the sidebar is visible"));
+export const SideBarCompactContext = new RawContextKey<boolean>('sideBarCompact', false, localize('sideBarCompact', "Whether the sidebar content is collapsed to a compact rail"));
+export const TheaWorkbenchModeContext = new RawContextKey<string>('theaWorkbenchMode', 'editor', localize('theaWorkbenchMode', "Thea workbench mode: editor or agents"));
 export const SidebarFocusContext = new RawContextKey<boolean>('sideBarFocus', false, localize('sideBarFocus', "Whether the sidebar has keyboard focus"));
 export const ActiveViewletContext = new RawContextKey<string>('activeViewlet', '', localize('activeViewlet', "The identifier of the active viewlet"));
 
