@@ -8,7 +8,9 @@ import { constObservable } from '../../../../../base/common/observable.js';
 import { URI } from '../../../../../base/common/uri.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
 import { IAgentHostEnablementService } from '../../../../../platform/agentHost/common/agentHostEnablementService.js';
+import { AgentHostAllowSignedOutWhenUsableSettingId } from '../../../../../platform/agentHost/common/agentService.js';
 import { IConfigurationService } from '../../../../../platform/configuration/common/configuration.js';
+import { ChatEntitlementContextKeys } from '../../../../services/chat/common/chatEntitlementService.js';
 import { TestConfigurationService } from '../../../../../platform/configuration/test/common/testConfigurationService.js';
 import { TestInstantiationService } from '../../../../../platform/instantiation/test/common/instantiationServiceMock.js';
 import { IStorageService } from '../../../../../platform/storage/common/storage.js';
@@ -144,6 +146,36 @@ suite('ChatConfiguration defaults', () => {
 			rememberedAware: SessionType.AgentHostCopilot,
 			localVisible: true,
 		});
+	});
+
+	test('editor default prefers agent host Copilot for unsigned BYOK users who allow signed-out use', () => {
+		const configurationService = new TestConfigurationService({
+			[AgentHostAllowSignedOutWhenUsableSettingId]: true,
+			[ChatEntitlementContextKeys.clientByokEnabled.key]: true,
+		});
+		const chatSessionsService = createChatSessionsService(SessionType.AgentHostCopilot);
+		const storageService = disposables.add(new TestStorageService());
+
+		assert.deepStrictEqual({
+			computed: getComputedDefaultSessionType(configurationService, chatSessionsService, localWorkspace, true),
+			rememberedAware: getDefaultNewChatSessionType(configurationService, chatSessionsService, storageService, localWorkspace, true),
+		}, {
+			computed: SessionType.AgentHostCopilot,
+			rememberedAware: SessionType.AgentHostCopilot,
+		});
+	});
+
+	test('editor default stays local when signed-out Agent Host is allowed without BYOK', () => {
+		const configurationService = new TestConfigurationService({
+			[AgentHostAllowSignedOutWhenUsableSettingId]: true,
+			[ChatEntitlementContextKeys.clientByokEnabled.key]: false,
+		});
+		const chatSessionsService = createChatSessionsService(SessionType.AgentHostCopilot);
+
+		assert.strictEqual(
+			getComputedDefaultSessionType(configurationService, chatSessionsService, localWorkspace, true),
+			localChatSessionType,
+		);
 	});
 
 	test('editor default stays local when the agent host is enabled but the Copilot default is not opted in', () => {

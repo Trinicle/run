@@ -176,6 +176,8 @@ export interface IChatSetupRequirement {
 	readonly anonymous: boolean;
 	/** Whether BYOK models are available. */
 	readonly hasByokModels: boolean;
+	/** Whether Agent Host / chat may proceed signed out when a usable backend exists. */
+	readonly allowSignedOutWhenUsable?: boolean;
 }
 
 /**
@@ -183,17 +185,19 @@ export interface IChatSetupRequirement {
  * The model picker uses a narrower condition that only surfaces interactive setup.
  */
 export function chatRequiresSetup(context: IChatSetupRequirement): boolean {
-	return (
-		(!context.completed && !context.hasByokModels) ||			// Setup not completed (unless BYOK models are available)
-		context.disabled ||											// Extension disabled: run setup to enable
-		context.untrusted ||										// Workspace untrusted: run setup to ask for trust
-		context.entitlement === ChatEntitlement.Available ||		// Entitlement available: run setup to sign up
-		(
-			context.entitlement === ChatEntitlement.Unknown &&		// Entitlement unknown: run setup to sign in / sign up
-			!context.anonymous &&									// unless anonymous access is enabled
-			!context.hasByokModels									// unless BYOK models are available
-		)
-	);
+	if (context.disabled || context.untrusted) {
+		return true;
+	}
+	if (context.allowSignedOutWhenUsable === true) {
+		return false;
+	}
+	if (!context.completed && !context.hasByokModels) {
+		return true;
+	}
+	if (context.entitlement === ChatEntitlement.Available) {
+		return true;
+	}
+	return context.entitlement === ChatEntitlement.Unknown && !context.anonymous && !context.hasByokModels;
 }
 
 export interface IChatEntitlementService {

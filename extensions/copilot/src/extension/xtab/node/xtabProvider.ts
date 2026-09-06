@@ -8,6 +8,7 @@ import { FetchStreamSource } from '../../../platform/chat/common/chatMLFetcher';
 import { ChatFetchError, ChatFetchResponseType, ChatLocation, RESPONSE_CONTAINED_NO_CHOICES } from '../../../platform/chat/common/commonTypes';
 import { ConfigKey, IConfigurationService, XTabProviderId } from '../../../platform/configuration/common/configurationService';
 import { IDiffService } from '../../../platform/diff/common/diffService';
+import { IAuthenticationService } from '../../../platform/authentication/common/authentication';
 import { ChatEndpoint } from '../../../platform/endpoint/node/chatEndpoint';
 import { createProxyXtabEndpoint } from '../../../platform/endpoint/node/proxyXtabEndpoint';
 import { IIgnoreService } from '../../../platform/ignore/common/ignoreService';
@@ -73,6 +74,8 @@ import { CurrentDocument } from '../common/xtabCurrentDocument';
 import { getCurrentLine, isModelLineCompatible } from './cursorLineDivergence';
 import { EditIntentParseMode } from './editIntent';
 import { handleCodeBlock, handleEditWindowOnly, handleEditWindowWithEditIntent, handleUnifiedWithXml, ResponseParseResult } from './responseFormatHandlers';
+import { IExtensionContribution } from '../../common/contributions';
+import { IHarnessModelCompletionsService } from '../../completions/vscode-node/harnessModelCompletionsService';
 import { XtabEndpoint } from './xtabEndpoint';
 import { CursorJumpPrediction, XtabNextCursorPredictor } from './xtabNextCursorPredictor';
 import { charCount, constructMessages, findMergeConflictMarkersRange } from './xtabUtils';
@@ -179,6 +182,8 @@ export class XtabProvider implements IStatelessNextEditProvider {
 		@IIgnoreService private readonly ignoreService: IIgnoreService,
 		@ISimilarFilesContextService private readonly similarFilesContextService: ISimilarFilesContextService,
 		@ITelemetryService private readonly _telemetryService: ITelemetryService,
+		@IAuthenticationService private readonly authService: IAuthenticationService,
+		@IHarnessModelCompletionsService private readonly harnessModelService: IHarnessModelCompletionsService,
 	) {
 		this.userInteractionMonitor = this.instaService.createInstance(UserInteractionMonitor);
 		this.terminalMonitor = this.instaService.createInstance(TerminalMonitor);
@@ -1632,6 +1637,16 @@ export class XtabProvider implements IStatelessNextEditProvider {
 
 		if (hasOverriddenUrlAndApiKey) {
 			return this.instaService.createInstance(XtabEndpoint, url, apiKey, configuredModelName);
+		}
+
+		const harnessEndpoint = this.harnessModelService.getActiveByokEndpoint();
+		if (!this.authService.copilotToken && harnessEndpoint) {
+			return this.instaService.createInstance(
+				XtabEndpoint,
+				harnessEndpoint.url,
+				harnessEndpoint.apiKey,
+				harnessEndpoint.modelId ?? configuredModelName,
+			);
 		}
 
 		return createProxyXtabEndpoint(this.instaService, configuredModelName);

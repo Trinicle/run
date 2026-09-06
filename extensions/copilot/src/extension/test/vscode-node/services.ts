@@ -99,6 +99,7 @@ import { ToolResultContentRenderer } from '../../agentDebug/vscode-node/toolResu
 import { GitHubOrgChatResourcesService, IGitHubOrgChatResourcesService } from '../../agents/vscode-node/githubOrgChatResourcesService';
 import { CommandServiceImpl, ICommandService } from '../../commands/node/commandService';
 import { ICopilotInlineCompletionItemProviderService, NullCopilotInlineCompletionItemProviderService } from '../../completions/common/copilotInlineCompletionItemProviderService';
+import { IHarnessModelCompletionsService, NullHarnessModelCompletionsService } from '../../completions/vscode-node/harnessModelCompletionsService';
 import { IPromptWorkspaceLabels, PromptWorkspaceLabels } from '../../context/node/resolvers/promptWorkspaceLabels';
 import { IUserFeedbackService, UserFeedbackService } from '../../conversation/vscode-node/userActions';
 import { ConversationStore, IConversationStore } from '../../conversationStore/node/conversationStore';
@@ -216,6 +217,7 @@ export function createExtensionTestingServices(): TestingServiceCollection {
 	testingServiceCollection.define(IInlineEditsModelService, new SyncDescriptor(InlineEditsModelService));
 	testingServiceCollection.define(IUndesiredModelsManager, new SyncDescriptor(UndesiredModels.Manager));
 	testingServiceCollection.define(ICopilotInlineCompletionItemProviderService, new SyncDescriptor(NullCopilotInlineCompletionItemProviderService));
+	testingServiceCollection.define(IHarnessModelCompletionsService, new SyncDescriptor(NullHarnessModelCompletionsService));
 	testingServiceCollection.define(IRerankerService, new SyncDescriptor(RerankerService));
 	testingServiceCollection.define(IOTelSqliteStore, new OTelSqliteStore(':memory:'));
 	testingServiceCollection.define(ISessionStore, new SessionStore(':memory:'));

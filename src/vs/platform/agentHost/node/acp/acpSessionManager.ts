@@ -28,7 +28,6 @@ export interface IAcpSessionLookup {
 export class AcpSessionManager {
 	private readonly _byChat = new Map<string, IAcpChatSession>();
 	private readonly _byAcpSessionId = new Map<string, IAcpChatSession>();
-	private readonly _byAhSession = new Map<string, IAcpChatSession>();
 
 	constructor(private readonly _transport: IAcpTransport) { }
 
@@ -38,10 +37,6 @@ export class AcpSessionManager {
 
 	getByAcpSessionId(sessionId: string): IAcpChatSession | undefined {
 		return this._byAcpSessionId.get(sessionId);
-	}
-
-	getByAhSession(session: URI): IAcpChatSession | undefined {
-		return this._byAhSession.get(session.toString());
 	}
 
 	async createAcpSession(chat: URI, session: URI, cwd: string | undefined, mcpServers: acp.NewSessionRequest['mcpServers']): Promise<IAcpChatSession> {
@@ -64,7 +59,6 @@ export class AcpSessionManager {
 		};
 		this._byChat.set(chat.toString(), record);
 		this._byAcpSessionId.set(result.sessionId, record);
-		this._byAhSession.set(session.toString(), record);
 		return record;
 	}
 
@@ -80,7 +74,6 @@ export class AcpSessionManager {
 		};
 		this._byChat.set(chat.toString(), record);
 		this._byAcpSessionId.set(acpSessionId, record);
-		this._byAhSession.set(session.toString(), record);
 		return record;
 	}
 
@@ -91,9 +84,6 @@ export class AcpSessionManager {
 		}
 		this._byChat.delete(chat.toString());
 		this._byAcpSessionId.delete(record.acpSessionId);
-		if (this._byAhSession.get(record.session.toString()) === record) {
-			this._byAhSession.delete(record.session.toString());
-		}
 		for (const queued of record.queued.splice(0)) {
 			queued();
 		}
@@ -105,7 +95,13 @@ export class AcpSessionManager {
 	 */
 	async beginTurn(record: IAcpChatSession, turnId: string): Promise<void> {
 		if (record.promptInFlight) {
-			await new Promise<void>(resolve => record.queued.push(resolve));
+			await new Promise<void>(resolve => {
+				record.queued.push(() => {
+					record.turnId = turnId;
+					resolve();
+				});
+			});
+			return;
 		}
 		record.promptInFlight = true;
 		record.turnId = turnId;

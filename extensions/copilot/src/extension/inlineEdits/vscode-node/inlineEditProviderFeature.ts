@@ -22,6 +22,7 @@ import { URI } from '../../../util/vs/base/common/uri';
 import { IInstantiationService } from '../../../util/vs/platform/instantiation/common/instantiation';
 import { IExtensionContribution } from '../../common/contributions';
 import { unificationStateObservable } from '../../completions/vscode-node/completionsUnificationContribution';
+import { IHarnessModelCompletionsService } from '../../completions/vscode-node/harnessModelCompletionsService';
 import { TelemetrySender } from '../node/nextEditProviderTelemetry';
 import { ContinuousEnhancedTelemetrySender } from '../node/continuousEnhancedTelemetrySender';
 import { ExpectedEditCaptureController } from './components/expectedEditCaptureController';
@@ -64,16 +65,18 @@ export class InlineEditProviderFeature {
 	private readonly _yieldToCopilot = this._configurationService.getExperimentBasedConfigObservable(ConfigKey.TeamInternal.InlineEditsYieldToCopilot, this._expService);
 	private readonly _excludedProviders = this._configurationService.getExperimentBasedConfigObservable(ConfigKey.TeamInternal.InlineEditsExcludedProviders, this._expService).map(v => v ? v.split(',').map(v => v.trim()).filter(v => v !== '') : []);
 	private readonly _copilotToken = observableFromEvent(this, this._authenticationService.onDidCopilotTokenChange, () => this._authenticationService.copilotToken);
+	private readonly _harnessModelAvailable = observableFromEvent(this, this._harnessModelService.onDidChangeModel, () => this._harnessModelService.hasUsableModel());
 	// Read reactively: on a fetched `/models` deployment this resolves async, so a brief cold-start
 	// window can emit completions until `onModelListUpdated` fires and re-registers with the excludes.
 	private readonly _supportsUnifiedCompletions = observableFromEvent(this, this._modelService.onModelListUpdated, () => this._modelService.selectedModelConfiguration().supportsUnifiedCompletions ?? false);
 
 	public readonly inlineEditsEnabled = derived(this, (reader) => {
 		const copilotToken = this._copilotToken.read(reader);
-		if (copilotToken === undefined) {
+		const hasHarnessModel = this._harnessModelAvailable.read(reader);
+		if (copilotToken === undefined && !hasHarnessModel) {
 			return false;
 		}
-		if (copilotToken.isCompletionsQuotaExceeded) {
+		if (copilotToken?.isCompletionsQuotaExceeded) {
 			return false;
 		}
 		return true;
@@ -97,6 +100,7 @@ export class InlineEditProviderFeature {
 		@IEnvService private readonly _envService: IEnvService,
 		@IInstantiationService private readonly _instantiationService: IInstantiationService,
 		@IInlineEditsModelService private readonly _modelService: IInlineEditsModelService,
+		@IHarnessModelCompletionsService private readonly _harnessModelService: IHarnessModelCompletionsService,
 	) {
 	}
 

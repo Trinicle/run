@@ -61,4 +61,9 @@ suite('chatRequiresSetup', () => {
 	test('signed out but BYOK models present does not require setup', () => {
 		assert.strictEqual(chatRequiresSetup(context({ completed: false, entitlement: ChatEntitlement.Unknown, hasByokModels: true })), false);
 	});
+
+	test('signed out with allowSignedOutWhenUsable does not require setup', () => {
+		assert.strictEqual(chatRequiresSetup(context({ completed: true, entitlement: ChatEntitlement.Unknown, allowSignedOutWhenUsable: true })), false);
+		assert.strictEqual(chatRequiresSetup(context({ completed: false, entitlement: ChatEntitlement.Unknown, allowSignedOutWhenUsable: true })), false);
+	});
 });

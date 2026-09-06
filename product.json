@@ -86,10 +86,10 @@
 		}
 	],
 	"defaultChatAgent": {
-		"extensionId": "run.run-chat",
-		"chatExtensionId": "run.run-chat",
-		"chatExtensionOutputId": "run.run-chat.Run Chat.log",
-		"chatExtensionOutputExtensionStateCommand": "",
+		"extensionId": "GitHub.copilot",
+		"chatExtensionId": "GitHub.copilot-chat",
+		"chatExtensionOutputId": "GitHub.copilot-chat.GitHub Copilot Chat.log",
+		"chatExtensionOutputExtensionStateCommand": "github.copilot.chat.state",
 		"documentationUrl": "",
 		"termsStatementUrl": "",
 		"privacyStatementUrl": "",
@@ -105,40 +105,53 @@
 				"name": "Run"
 			},
 			"enterprise": {
-				"id": "",
-				"name": ""
+				"id": "github-enterprise",
+				"name": "GHE.com"
 			},
 			"google": {
-				"id": "",
-				"name": ""
+				"id": "google",
+				"name": "Google"
 			},
 			"apple": {
-				"id": "",
-				"name": ""
+				"id": "apple",
+				"name": "Apple"
 			},
 			"microsoft": {
-				"id": "",
-				"name": ""
+				"id": "microsoft",
+				"name": "Microsoft"
 			}
 		},
-		"providerExtensionId": "",
-		"providerUriSetting": "",
-		"providerScopes": [],
+		"providerExtensionId": "vscode.github-authentication",
+		"providerUriSetting": "github-enterprise.uri",
+		"providerScopes": [
+			[
+				"user:email"
+			],
+			[
+				"read:user"
+			],
+			[
+				"read:user",
+				"user:email",
+				"repo",
+				"workflow"
+			]
+		],
 		"entitlementUrl": "",
 		"entitlementSignupLimitedUrl": "",
-		"chatQuotaExceededContext": "run.chat.quotaExceeded",
-		"completionsQuotaExceededContext": "run.chat.completionsQuotaExceeded",
-		"walkthroughCommand": "",
-		"completionsMenuCommand": "",
-		"chatRefreshTokenCommand": "",
-		"generateCommitMessageCommand": "",
-		"resolveMergeConflictsCommand": "",
-		"completionsAdvancedSetting": "run.chat.advanced",
-		"completionsEnablementSetting": "run.chat.enable",
-		"nextEditSuggestionsSetting": "run.chat.nextEditSuggestions.enabled",
 		"tokenEntitlementUrl": "",
 		"mcpRegistryDataUrl": "",
-		"managedSettingsUrl": ""
+		"managedSettingsUrl": "",
+		"chatQuotaExceededContext": "github.copilot.chat.quotaExceeded",
+		"completionsQuotaExceededContext": "github.copilot.completions.quotaExceeded",
+		"walkthroughCommand": "github.copilot.open.walkthrough",
+		"completionsMenuCommand": "github.copilot.toggleStatusMenu",
+		"chatRefreshTokenCommand": "github.copilot.refreshToken",
+		"generateCommitMessageCommand": "github.copilot.git.generateCommitMessage",
+		"resolveMergeConflictsCommand": "github.copilot.git.resolveMergeConflicts",
+		"completionsAdvancedSetting": "github.copilot.advanced",
+		"completionsEnablementSetting": "github.copilot.enable",
+		"nextEditSuggestionsSetting": "github.copilot.nextEditSuggestions.enabled"
 	},
 	"onboardingKeymaps": [
 		{

@@ -10,7 +10,7 @@ import { Completion } from '../../../../../../platform/nesFetch/common/completio
 import { Completions, ICompletionsFetchService } from '../../../../../../platform/nesFetch/common/completionsFetchService';
 import { ResponseStream } from '../../../../../../platform/nesFetch/common/responseStream';
 import { RequestId, getRequestId } from '../../../../../../platform/networking/common/fetch';
-import { IHeaders } from '../../../../../../platform/networking/common/fetcherService';
+import { IFetcherService, IHeaders } from '../../../../../../platform/networking/common/fetcherService';
 import { ITelemetryService } from '../../../../../../platform/telemetry/common/telemetry';
 import { createServiceIdentifier } from '../../../../../../util/common/services';
 import { assertNever } from '../../../../../../util/vs/base/common/assert';
@@ -38,6 +38,7 @@ import {
 } from '../telemetry';
 import { delay } from '../util/async';
 import { ICompletionsRuntimeModeService } from '../util/runtimeMode';
+import { IHarnessModelCompletionsService, fetchHarnessByokCompletions, OpenAICompatibleEndpoint } from '../../../../../completions/vscode-node/harnessModelCompletionsService';
 import { getKey } from '../util/unknown';
 import {
 	APIChoice,
@@ -337,6 +338,8 @@ export class LiveOpenAIFetcher extends OpenAIFetcher {
 		@ICompletionsStatusReporter private readonly statusReporter: ICompletionsStatusReporter,
 		@IAuthenticationService private readonly authenticationService: IAuthenticationService,
 		@ICompletionsFetchService private readonly fetchService: ICompletionsFetchService,
+		@IHarnessModelCompletionsService private readonly harnessModelService: IHarnessModelCompletionsService,
+		@IFetcherService private readonly fetcherService: IFetcherService,
 		// @ICompletionsLogTargetService private readonly logTarget: ICompletionsLogTargetService,
 		@IEnvService private readonly envService: IEnvService,
 	) {
@@ -352,8 +355,20 @@ export class LiveOpenAIFetcher extends OpenAIFetcher {
 		if (this.#disabledReason) {
 			return { type: 'canceled', reason: this.#disabledReason };
 		}
+		const harnessEndpoint = this.harnessModelService.getActiveByokEndpoint();
+		let copilotToken = this.copilotTokenManager.token;
+		if (!copilotToken && harnessEndpoint) {
+			return this._fetchViaHarnessByokEndpoint(params, harnessEndpoint, baseTelemetryData, finishedCb, cancel);
+		}
+		if (!copilotToken) {
+			try {
+				copilotToken = await this.copilotTokenManager.getToken();
+			} catch (err) {
+				const message = err instanceof Error ? err.message : String(err);
+				return { type: 'failed', reason: message };
+			}
+		}
 		const endpoint = 'completions';
-		const copilotToken = this.copilotTokenManager.token ?? await this.copilotTokenManager.getToken();
 
 		const request: CompletionRequest = {
 			prompt: params.prompt.prefix,
@@ -596,6 +611,100 @@ export class LiveOpenAIFetcher extends OpenAIFetcher {
 			} finally {
 				this.instantiationService.invokeFunction(logEnginePrompt, prompt, telemetryData);
 			}
+		}
+	}
+
+	private async _fetchViaHarnessByokEndpoint(
+		params: CompletionParams,
+		harnessEndpoint: OpenAICompatibleEndpoint,
+		baseTelemetryData: TelemetryWithExp,
+		finishedCb: FinishedCallback,
+		cancel?: ICancellationToken,
+	): Promise<CompletionResults | CompletionError> {
+		const prompt = params.prompt;
+		const ourRequestId = params.ourRequestId;
+		const cancelToken = cancel ?? CancellationToken.None;
+
+		await delay(0);
+		if (cancel?.isCancellationRequested) {
+			return { type: 'canceled', reason: 'before fetch request' };
+		}
+
+		const telemetryData = baseTelemetryData.extendedBy(
+			{
+				endpoint: 'harness-byok-chat-completions',
+				engineName: harnessEndpoint.modelId,
+				uiKind: params.uiKind,
+			},
+			telemetrizePromptLength(prompt),
+		);
+		telemetryData.properties['headerRequestId'] = ourRequestId;
+		this.instantiationService.invokeFunction(telemetry, 'request.sent', telemetryData);
+
+		const requestSw = new StopWatch();
+		try {
+			const res = await fetchHarnessByokCompletions(
+				this.fetcherService,
+				harnessEndpoint,
+				{
+					prefix: prompt.prefix,
+					suffix: prompt.suffix,
+					isFimEnabled: prompt.isFimEnabled,
+					maxTokens: getMaxSolutionTokens(),
+					temperature: getTemperatureForSamples(this.runtimeModeService, params.count),
+					topP: getTopP(),
+					n: params.count,
+					stop: getStops(params.languageId),
+					requestId: ourRequestId,
+				},
+				cancelToken,
+			);
+
+			if (res.isError()) {
+				const err = res.err;
+				if (err instanceof Completions.RequestCancelled) {
+					this.instantiationService.invokeFunction(telemetry, 'request.cancel', telemetryData);
+					return { type: 'canceled', reason: 'during fetch request' };
+				}
+				if (err instanceof Completions.UnsuccessfulResponse) {
+					const totalTimeMs = requestSw.elapsed();
+					telemetryData.measurements.totalTimeMs = totalTimeMs;
+					telemetryData.properties.status = String(err.status);
+					this.instantiationService.invokeFunction(telemetry, 'request.response', telemetryData);
+					return { type: 'failed', reason: `${err.status} ${err.statusText}` };
+				}
+				if (err instanceof Completions.Unexpected) {
+					const totalTimeMs = requestSw.elapsed();
+					telemetryData.measurements.totalTimeMs = totalTimeMs;
+					this.instantiationService.invokeFunction(telemetry, 'request.error', telemetryData);
+					return { type: 'failed', reason: err.error.message };
+				}
+				assertNever(err);
+			}
+
+			const responseStream = res.val;
+			const totalTimeMs = requestSw.elapsed();
+			telemetryData.measurements.totalTimeMs = totalTimeMs;
+			telemetryData.properties.status = '200';
+			this.instantiationService.invokeFunction(telemetry, 'request.response', telemetryData);
+
+			if (cancel?.isCancellationRequested) {
+				try {
+					await responseStream.destroy();
+				} catch (e) {
+					this.instantiationService.invokeFunction(acc => logger.exception(acc, e, `Error destroying stream`));
+				}
+				return { type: 'canceled', reason: 'after fetch request' };
+			}
+
+			const choices = LiveOpenAIFetcher.convertStreamToApiChoices(responseStream, finishedCb, baseTelemetryData, cancel);
+			return {
+				type: 'success',
+				choices: postProcessChoices(choices),
+				getProcessingTime: () => getProcessingTime(responseStream.headers),
+			};
+		} finally {
+			this.instantiationService.invokeFunction(logEnginePrompt, prompt, telemetryData);
 		}
 	}
 

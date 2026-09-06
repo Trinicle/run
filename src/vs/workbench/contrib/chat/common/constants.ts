@@ -17,6 +17,7 @@ import { URI } from '../../../../base/common/uri.js';
 import { getNewChatSessionResource } from './model/chatUri.js';
 import { clearUserSelectedSessionType, getRememberedSessionType, storeUserSelectedSessionType } from './chatSessionTypePreference.js';
 import { IAgentHostEnablementService } from '../../../../platform/agentHost/common/agentHostEnablementService.js';
+import { AgentHostAllowSignedOutWhenUsableSettingId } from '../../../../platform/agentHost/common/agentService.js';
 
 export { ChatAIDisabledSettingId } from '../../../../platform/chat/common/chatSettings.js';
 
@@ -313,8 +314,9 @@ export function isSupportedChatFileScheme(accessor: ServicesAccessor, scheme: st
  * editor window.
  *
  * Virtual workspaces always default to {@link localChatSessionType}. Otherwise,
- * when the agent host is enabled and either `chat.defaultToCopilotHarness` is opted in or the
- * agent sandbox is enforced by policy, Agent Host Copilot CLI is the default. It falls back to
+ * when the agent host is enabled and either `chat.defaultToCopilotHarness` is opted in, the
+ * agent sandbox is enforced by policy, or unsigned BYOK users opted into
+ * `chat.agentHost.allowSignedOutWhenUsable`, Agent Host Copilot CLI is the default. It falls back to
  * the local harness when enabled, or to the first visible non-local provider.
  */
 export function getComputedDefaultSessionType(
@@ -328,7 +330,7 @@ export function getComputedDefaultSessionType(
 		return localChatSessionType;
 	}
 
-	if (agentHostEnabled && isCopilotHarnessDefault(configurationService, managedSandboxEnforced)) {
+	if (agentHostEnabled && (isCopilotHarnessDefault(configurationService, managedSandboxEnforced) || shouldDefaultToAgentHostHarnessWhenSignedOutByok(configurationService))) {
 		return SessionType.AgentHostCopilot;
 	}
 
@@ -513,6 +515,12 @@ export function recordUserSelectedSessionType(
 function isCopilotHarnessDefault(configurationService: IConfigurationService, managedSandboxEnforced = false): boolean {
 	return configurationService.getValue<boolean>(ChatConfiguration.DefaultToCopilotHarness) === true
 		|| managedSandboxEnforced;
+}
+
+/** Whether unsigned users with BYOK configured should default new sidebar chats to the Agent Host harness. */
+function shouldDefaultToAgentHostHarnessWhenSignedOutByok(configurationService: IConfigurationService): boolean {
+	return configurationService.getValue<boolean>(AgentHostAllowSignedOutWhenUsableSettingId) === true
+		&& configurationService.getValue<boolean>(ChatEntitlementContextKeys.clientByokEnabled.key) === true;
 }
 
 /**

@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 import { IVSCodeExtensionContext } from '../../../platform/extContext/common/extensionContext';
+import { createServiceIdentifier } from '../../../util/common/services';
 import { BYOKAuthType, BYOKModelCapabilities } from '../../byok/common/byokProvider';
 
 export interface StoredModelConfig {
@@ -54,6 +55,8 @@ export interface IBYOKStorageService {
 	 */
 	removeModelConfig(modelId: string, providerName: string, isDeletingCustomModel: boolean): Promise<void>;
 }
+
+export const IBYOKStorageService = createServiceIdentifier<IBYOKStorageService>('IBYOKStorageService');
 
 export class BYOKStorageService implements IBYOKStorageService {
 	private readonly _extensionContext: IVSCodeExtensionContext;

@@ -16,6 +16,7 @@ import { ThemeIcon } from '../../../../../base/common/themables.js';
 import { IContextKeyService } from '../../../../../platform/contextkey/common/contextkey.js';
 import { IConfigurationService } from '../../../../../platform/configuration/common/configuration.js';
 import { ChatMicrosoftAuthenticationEnabledSettingId } from '../../../../../platform/chat/common/chatSettings.js';
+import { AgentHostAllowSignedOutWhenUsableSettingId } from '../../../../../platform/agentHost/common/agentService.js';
 import { IMarkdownRendererService } from '../../../../../platform/markdown/browser/markdownRenderer.js';
 import { localize } from '../../../../../nls.js';
 import { ICommandService } from '../../../../../platform/commands/common/commands.js';
@@ -183,8 +184,11 @@ export function shouldShowMicrosoftProvider(configurationService: IConfiguration
 	return configurationService.getValue<boolean>(ChatMicrosoftAuthenticationEnabledSettingId) === true;
 }
 
-export function getChatSetupDialogButtons(entitlement: ChatEntitlement, options: IChatSetupRunOptions | undefined, enterpriseAuthentication: boolean, showMicrosoftProvider: boolean, providers: IChatSetupDialogProviders = defaultChat.provider): IChatSetupDialogButton[] {
+export function getChatSetupDialogButtons(entitlement: ChatEntitlement, options: IChatSetupRunOptions | undefined, enterpriseAuthentication: boolean, showMicrosoftProvider: boolean, providers: IChatSetupDialogProviders = defaultChat.provider, configurationService?: IConfigurationService): IChatSetupDialogButton[] {
 	const button = (label: string, strategy: ChatSetupStrategy, ...classes: string[]): IChatSetupDialogButton => ({ label, strategy, classes });
+
+	const allowSignedOut = configurationService?.getValue<boolean>(AgentHostAllowSignedOutWhenUsableSettingId) === true;
+	const showContinueWithoutSignIn = options?.allowContinueWithoutSignIn || allowSignedOut;
 
 	if (!options?.forceAnonymous && (entitlement === ChatEntitlement.Unknown || options?.forceSignInDialog)) {
 		const defaultProviderButton = button(localize('continueWith', "Continue with {0}", providers.default.name), ChatSetupStrategy.SetupWithoutEnterpriseProvider, 'continue-button', 'default');
@@ -199,8 +203,8 @@ export function getChatSetupDialogButtons(entitlement: ChatEntitlement, options:
 		const providerButtons = enterpriseAuthentication
 			? [enterpriseProviderButton, ...socialProviderButtons, defaultProviderLink]
 			: [defaultProviderButton, ...socialProviderButtons, enterpriseProviderLink];
-		return options?.allowContinueWithoutSignIn
-			? [...providerButtons, button(localize('continueWithoutSigningIn', "Continue Without Signing In"), ChatSetupStrategy.Canceled, 'link-button')]
+		return showContinueWithoutSignIn
+			? [...providerButtons, button(localize('continueWithoutSigningIn', "Continue Without Signing In"), ChatSetupStrategy.ContinueWithoutSignIn, 'link-button')]
 			: providerButtons;
 	}
 
@@ -298,6 +302,8 @@ export class ChatSetup {
 			return { dialogSkipped, success: undefined };
 		}
 
+		const allowSignedOut = this.configurationService.getValue<boolean>(AgentHostAllowSignedOutWhenUsableSettingId) === true;
+
 		if (!wasTrusted) {
 			// Trust was just granted: the chat extension is (re)activating, and the
 			// entitlement only resolves once it is up. Wait for activation so the
@@ -314,6 +320,8 @@ export class ChatSetup {
 			setupStrategy = ChatSetupStrategy.DefaultSetup; // existing pro/free users setup without a dialog
 		} else if (options?.forceAnonymous === ChatSetupAnonymous.EnabledWithoutDialog) {
 			setupStrategy = ChatSetupStrategy.DefaultSetup; // anonymous setup without a dialog
+		} else if (allowSignedOut && this.chatEntitlementService.entitlement === ChatEntitlement.Unknown) {
+			setupStrategy = ChatSetupStrategy.ContinueWithoutSignIn; // install extension, no sign-in dialog
 		} else {
 			setupStrategy = await this.showDialog(options);
 		}
@@ -355,6 +363,10 @@ export class ChatSetup {
 					break;
 				case ChatSetupStrategy.DefaultSetup:
 					success = await this.controller.value.setup({ ...options, forceAnonymous: options?.forceAnonymous, cancellationToken: setupCancellation.token });
+					break;
+				case ChatSetupStrategy.ContinueWithoutSignIn:
+					success = await this.controller.value.setup({ cancellationToken: setupCancellation.token });
+					this.context.update({ completed: true });
 					break;
 				case ChatSetupStrategy.Canceled:
 					this.context.update({ later: true });
@@ -427,7 +439,7 @@ export class ChatSetup {
 		}
 		const enterpriseAuthentication = this.defaultAccountService.getDefaultAccountAuthenticationProvider().enterprise;
 		const showMicrosoftProvider = shouldShowMicrosoftProvider(this.configurationService);
-		const buttons = getChatSetupDialogButtons(this.context.state.entitlement, options, enterpriseAuthentication, showMicrosoftProvider);
+		const buttons = getChatSetupDialogButtons(this.context.state.entitlement, options, enterpriseAuthentication, showMicrosoftProvider, defaultChat.provider, this.configurationService);
 		const dialog = this.instantiationService.createInstance(ChatSetupDialog, this.layoutService.activeContainer, {
 			title: this.getDialogTitle(options),
 			buttons,

@@ -59,7 +59,7 @@ const $ = DOM.$;
 
 const PLUGIN_COLLECTION_PREFIX = MCP_PLUGIN_COLLECTION_ID_PREFIX;
 
-const COPILOT_EXTENSION_IDS = ['run.run-chat', 'github.copilot', 'github.copilot-chat'];
+const COPILOT_EXTENSION_IDS = ['github.copilot', 'github.copilot-chat'];
 
 function isCopilotExtension(id: ExtensionIdentifier): boolean {
 	return COPILOT_EXTENSION_IDS.some(copilotId => ExtensionIdentifier.equals(id, copilotId));

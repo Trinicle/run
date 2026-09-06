@@ -38,6 +38,7 @@ import { GhostTextCompletionItem, GhostTextCompletionList } from '../../completi
 import { CopilotInlineCompletionItemProvider } from '../../completions-core/vscode-node/extension/src/vscodeInlineCompletionItemProvider';
 import { ICopilotInlineCompletionItemProviderService } from '../../completions/common/copilotInlineCompletionItemProviderService';
 import { CompletionsCoreContribution } from '../../completions/vscode-node/completionsCoreContribution';
+import { IHarnessModelCompletionsService } from '../../completions/vscode-node/harnessModelCompletionsService';
 import { unificationStateObservable } from '../../completions/vscode-node/completionsUnificationContribution';
 import { NesChangeHint } from '../common/nesTriggerHint';
 import { NESInlineCompletionContext } from '../node/nextEditProvider';
@@ -66,14 +67,16 @@ export class JointCompletionsProviderContribution extends Disposable implements 
 	// private readonly _yieldToCopilot = this._configurationService.getExperimentBasedConfigObservable(ConfigKey.TeamInternal.InlineEditsYieldToCopilot, this._expService);
 	private readonly _excludedProviders = this._configurationService.getExperimentBasedConfigObservable(ConfigKey.TeamInternal.InlineEditsExcludedProviders, this._expService).map(v => v ? v.split(',').map(v => v.trim()).filter(v => v !== '') : []);
 	private readonly _copilotToken = observableFromEvent(this, this._authenticationService.onDidCopilotTokenChange, () => this._authenticationService.copilotToken);
+	private readonly _harnessModelAvailable = observableFromEvent(this, this._harnessModelService.onDidChangeModel, () => this._harnessModelService.hasUsableModel());
 	private readonly _supportsUnifiedCompletions = observableFromEvent(this, this._modelService.onModelListUpdated, () => this._modelService.selectedModelConfiguration().supportsUnifiedCompletions ?? false);
 
 	public readonly inlineEditsEnabled = derived(this, (reader) => {
 		const copilotToken = this._copilotToken.read(reader);
-		if (copilotToken === undefined) {
+		const hasHarnessModel = this._harnessModelAvailable.read(reader);
+		if (copilotToken === undefined && !hasHarnessModel) {
 			return false;
 		}
-		if (copilotToken.isCompletionsQuotaExceeded) {
+		if (copilotToken?.isCompletionsQuotaExceeded) {
 			return false;
 		}
 		return true;
@@ -99,6 +102,7 @@ export class JointCompletionsProviderContribution extends Disposable implements 
 		@IAuthenticationService private readonly _authenticationService: IAuthenticationService,
 		@IEnvService private readonly _envService: IEnvService,
 		@IInlineEditsModelService private readonly _modelService: IInlineEditsModelService,
+		@IHarnessModelCompletionsService private readonly _harnessModelService: IHarnessModelCompletionsService,
 	) {
 		super();
 
@@ -220,7 +224,7 @@ export class JointCompletionsProviderContribution extends Disposable implements 
 
 					// @ulugbekna: note that we don't want it if modelUnification is on
 					if (
-						(!modelUnification || unificationStateValue?.codeUnification || extensionUnification || configEnabled || this._copilotToken.read(reader)?.isNoAuthUser) &&
+						(!modelUnification || unificationStateValue?.codeUnification || extensionUnification || configEnabled || this._copilotToken.read(reader)?.isNoAuthUser || this._harnessModelAvailable.read(reader)) &&
 						!isExcluded
 					) {
 						completionsProvider = this._copilotInlineCompletionItemProviderService.getOrCreateProvider() as CopilotInlineCompletionItemProvider;

@@ -5,6 +5,7 @@
 
 import { Disposable, DisposableStore } from '../../../../../../base/common/lifecycle.js';
 import { derived, IObservable, IReader, ISettableObservable, observableValue } from '../../../../../../base/common/observable.js';
+import { isLocalAgentHostTarget } from '../../../common/chatSessionsService.js';
 import { parseRemoteAgentHostHarness } from '../../../../../../platform/agentHost/common/agentHostSessionType.js';
 import { InstantiationType, registerSingleton } from '../../../../../../platform/instantiation/common/extensions.js';
 import { createDecorator } from '../../../../../../platform/instantiation/common/instantiation.js';
@@ -23,6 +24,25 @@ export const AGENT_HOST_COPILOT_CLI_SESSION_TYPE = 'agent-host-copilotcli';
  */
 export function isCopilotCliSessionType(sessionType: string): boolean {
 	return sessionType === AGENT_HOST_COPILOT_CLI_SESSION_TYPE || parseRemoteAgentHostHarness(sessionType) === 'copilotcli';
+}
+
+/** Built-in ACP agent ids registered as local agent-host session types. */
+export const AGENT_HOST_ACP_BUILTIN_PROVIDERS = ['copilotcli', 'claude', 'codex'] as const;
+
+/**
+ * Whether a session type runs through the Agent Host harness (BYOK bridge or ACP subprocess),
+ * locally or on a remote agent host.
+ */
+export function isAgentHostHarnessSessionType(sessionType: string): boolean {
+	if (isLocalAgentHostTarget(sessionType)) {
+		return true;
+	}
+	return parseRemoteAgentHostHarness(sessionType) !== undefined;
+}
+
+/** Session types that receive the shared client-tools catalog (edit file, terminal, etc.). */
+export function isAgentHostClientToolsSessionType(sessionType: string): boolean {
+	return isAgentHostHarnessSessionType(sessionType);
 }
 
 /**

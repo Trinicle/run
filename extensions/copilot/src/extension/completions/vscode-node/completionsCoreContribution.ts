@@ -12,16 +12,19 @@ import { autorun, observableFromEvent } from '../../../util/vs/base/common/obser
 import { registerUnificationCommands } from '../../completions-core/vscode-node/completionsServiceBridges';
 import { ICopilotInlineCompletionItemProviderService } from '../common/copilotInlineCompletionItemProviderService';
 import { unificationStateObservable } from './completionsUnificationContribution';
+import { IHarnessModelCompletionsService } from './harnessModelCompletionsService';
 
 export class CompletionsCoreContribution extends Disposable {
 
 	private readonly _copilotToken = observableFromEvent(this, this.authenticationService.onDidCopilotTokenChange, () => this.authenticationService.copilotToken);
+	private readonly _harnessModelAvailable = observableFromEvent(this, this.harnessModelService.onDidChangeModel, () => this.harnessModelService.hasUsableModel());
 
 	constructor(
 		@ICopilotInlineCompletionItemProviderService _copilotInlineCompletionItemProviderService: ICopilotInlineCompletionItemProviderService,
 		@IConfigurationService configurationService: IConfigurationService,
 		@IExperimentationService experimentationService: IExperimentationService,
-		@IAuthenticationService private readonly authenticationService: IAuthenticationService
+		@IAuthenticationService private readonly authenticationService: IAuthenticationService,
+		@IHarnessModelCompletionsService private readonly harnessModelService: IHarnessModelCompletionsService,
 	) {
 		super();
 
@@ -32,13 +35,11 @@ export class CompletionsCoreContribution extends Disposable {
 			const configEnabled = configurationService.getExperimentBasedConfigObservable<boolean>(ConfigKey.TeamInternal.InlineEditsEnableGhCompletionsProvider, experimentationService).read(reader);
 			const extensionUnification = unificationStateValue?.extensionUnification ?? false;
 			const copilotToken = this._copilotToken.read(reader);
+			const hasHarnessModel = this._harnessModelAvailable.read(reader);
 
 			let hasInstantiatedProvider = false;
-			// Completions require a Copilot token to call the completions endpoint, so don't
-			// register the provider in air-gapped / signed-out scenarios — it would just fail
-			// with GitHubLoginFailedError on every keystroke.
-			const wantsProvider = unificationStateValue?.codeUnification || extensionUnification || configEnabled || copilotToken?.isNoAuthUser;
-			if (wantsProvider && copilotToken) {
+			const wantsProvider = unificationStateValue?.codeUnification || extensionUnification || configEnabled || copilotToken?.isNoAuthUser || hasHarnessModel;
+			if (wantsProvider && (copilotToken || hasHarnessModel)) {
 				const provider = _copilotInlineCompletionItemProviderService.getOrCreateProvider();
 				reader.store.add(
 					languages.registerInlineCompletionItemProvider(
@@ -64,7 +65,8 @@ export class CompletionsCoreContribution extends Disposable {
 
 		this._register(autorun(reader => {
 			const token = this._copilotToken.read(reader);
-			void commands.executeCommand('setContext', 'github.copilot.activated', token !== undefined);
+			const hasHarnessModel = this._harnessModelAvailable.read(reader);
+			void commands.executeCommand('setContext', 'github.copilot.activated', token !== undefined || hasHarnessModel);
 		}));
 	}
 }

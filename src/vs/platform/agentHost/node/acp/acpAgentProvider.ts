@@ -8,6 +8,7 @@ import { Emitter, Event } from '../../../../base/common/event.js';
 import { Disposable, DisposableStore } from '../../../../base/common/lifecycle.js';
 import { ResourceMap } from '../../../../base/common/map.js';
 import { observableValue, type IObservable } from '../../../../base/common/observable.js';
+import { hasKey } from '../../../../base/common/types.js';
 import { URI } from '../../../../base/common/uri.js';
 import { generateUuid } from '../../../../base/common/uuid.js';
 import { localize } from '../../../../nls.js';
@@ -38,7 +39,7 @@ import {
 } from '../../common/agent.js';
 import { AgentHostMcpServersConfigKey, platformRootSchema, type AgentHostMcpServers } from '../../common/agentHostSchema.js';
 import { McpServerType, type IMcpServerConfiguration } from '../../../mcp/common/mcpPlatformTypes.js';
-import { ChatInputResponseKind, type ClientPluginCustomization, type Customization, type MessageAttachment, type ModelSelection, type PendingMessage, type ToolCallResult, type ToolDefinition, type Turn } from '../../common/state/sessionState.js';
+import { ChatInputResponseKind, type ClientPluginCustomization, type Customization, type MessageAttachment, type ToolCallResult, type ToolDefinition, type Turn } from '../../common/state/sessionState.js';
 import type { ResolveSessionConfigResult, SessionConfigCompletionsResult } from '../../common/state/protocol/commands.js';
 import { IAgentConfigurationService } from '../agentConfigurationService.js';
 import { IAgentHostProviderService } from '../agentHostProviderService.js';
@@ -152,7 +153,7 @@ export class AcpAgentProvider extends Disposable implements IAgent {
 				await this._transport!.connection.loadSession({
 					sessionId: data.acpSessionId,
 					cwd: data.cwd ?? '',
-					mcpServers: this._mcpServersForNewSession(),
+					mcpServers: this._mcpServersForNewSession(chat),
 				});
 			}
 			manager.bindRestored(chat, session, data.acpSessionId, data.cwd);
@@ -269,14 +270,15 @@ export class AcpAgentProvider extends Disposable implements IAgent {
 
 	private async _createChat(chat: URI, context: AgentChatOperationContext, options?: IAgentCreateChatOptions): Promise<IAgentCreateChatResult> {
 		const session = resolveAgentChatContext(context, chat).configurationResource;
-		const cwd = options?.workingDirectories?.[0]?.fsPath;
+		const cwd = resolveWorkingDirectoryPath(options?.workingDirectories);
 		this._chats.set(chat, { chat, session, createdAt: Date.now(), cwd, turns: [] });
 		const manager = await this._ensureSessions();
-		const acpSession = await manager.createAcpSession(chat, session, cwd, this._mcpServersForNewSession());
+		const acpSession = await manager.createAcpSession(chat, session, cwd, this._mcpServersForNewSession(chat));
 		return { providerData: encodeProviderData({ acpSessionId: acpSession.acpSessionId, cwd }) };
 	}
 
 	private async _disposeChat(chat: URI, _context: AgentChatOperationContext): Promise<void> {
+		this._bridge?.unregisterChatToolsServer(chat);
 		this._sessions?.remove(chat);
 		this._chats.delete(chat);
 		this._activeClients.delete(chat);
@@ -293,14 +295,14 @@ export class AcpAgentProvider extends Disposable implements IAgent {
 		const session = context ? resolveAgentChatContext(context, chat).configurationResource : AgentSession.uri(this.id, generateUuid());
 		let record = this._chats.get(chat);
 		if (!record) {
-			const cwd = Array.isArray(workingDirectories) ? workingDirectories[0]?.fsPath : workingDirectories?.fsPath;
+			const cwd = resolveWorkingDirectoryPath(workingDirectories);
 			record = { chat, session, createdAt: Date.now(), cwd, turns: [] };
 			this._chats.set(chat, record);
 		}
 		const manager = await this._ensureSessions();
 		let acpSession = manager.getByChat(chat);
 		if (!acpSession) {
-			acpSession = await manager.createAcpSession(chat, record.session, record.cwd, this._mcpServersForNewSession());
+			acpSession = await manager.createAcpSession(chat, record.session, record.cwd, this._mcpServersForNewSession(chat));
 		}
 		const resolvedTurnId = turnId ?? generateUuid();
 		this._mapper!.beginTurn(resolvedTurnId);
@@ -391,24 +393,35 @@ export class AcpAgentProvider extends Disposable implements IAgent {
 		return sessions;
 	}
 
-	private _mcpServersForNewSession(): IAcpMcpServer[] {
+	private _mcpServersForNewSession(chat?: URI): acp.NewSessionRequest['mcpServers'] {
 		const servers: IAcpMcpServer[] = [];
 		const init = this._initializeResult;
 		const includeAcpTools = !init || agentSupportsAcpMcp(init);
 		if (includeAcpTools && this._bridge) {
-			servers.push({ type: 'acp', name: ACP_CLIENT_TOOLS_MCP_NAME, serverId: this._bridge.clientToolsServerId });
+			const serverId = chat ? this._bridge.registerChatToolsServer(chat) : this._bridge.clientToolsServerId;
+			servers.push({ type: 'acp', name: ACP_CLIENT_TOOLS_MCP_NAME, serverId });
 		}
 		const configured = this._configurationService.getRootValue(platformRootSchema, AgentHostMcpServersConfigKey) ?? {};
 		if (!init || agentSupportsStdioMcp(init) || agentSupportsAcpMcp(init)) {
 			servers.push(...toAcpMcpServers(configured));
 		}
-		return servers;
+		return servers as acp.NewSessionRequest['mcpServers'];
 	}
+}
+
+function resolveWorkingDirectoryPath(workingDirectories: readonly URI[] | URI | undefined): string | undefined {
+	if (!workingDirectories) {
+		return undefined;
+	}
+	if (Array.isArray(workingDirectories)) {
+		return workingDirectories[0]?.fsPath;
+	}
+	return (workingDirectories as URI).fsPath;
 }
 
 function pickAcpAuthMethodId(methods: readonly acp.AuthMethod[]): string | undefined {
 	for (const method of methods) {
-		if (!('type' in method) || method.type !== 'terminal') {
+		if (!hasKey(method, { type: true }) || method.type !== 'terminal') {
 			return method.id;
 		}
 	}

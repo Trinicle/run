@@ -41,6 +41,24 @@ export enum DiagnosticSeverity {
 	Hint = 3
 }
 
+export enum QuickPickItemKind {
+	Separator = -1,
+	Default = 0,
+}
+
+export enum ColorThemeKind {
+	Light = 1,
+	Dark = 2,
+	HighContrast = 3,
+	HighContrastLight = 4,
+}
+
+export enum ConfigurationTarget {
+	Global = 1,
+	Workspace = 2,
+	WorkspaceFolder = 3,
+}
+
 export enum ExtensionMode {
 	Production = 1,
 	Development = 2,

@@ -104,6 +104,8 @@ import { SessionTranscriptService } from '../../chat/vscode-node/sessionTranscri
 import { CommandServiceImpl, ICommandService } from '../../commands/node/commandService';
 import { ICopilotInlineCompletionItemProviderService } from '../../completions/common/copilotInlineCompletionItemProviderService';
 import { CopilotInlineCompletionItemProviderService } from '../../completions/vscode-node/copilotInlineCompletionItemProviderService';
+import { HarnessModelCompletionsService, IHarnessModelCompletionsService } from '../../completions/vscode-node/harnessModelCompletionsService';
+import { BYOKStorageService, IBYOKStorageService } from '../../byok/vscode-node/byokStorageService';
 import { ApiEmbeddingsIndex, IApiEmbeddingsIndex } from '../../context/node/resolvers/extensionApi';
 import { IPromptWorkspaceLabels, PromptWorkspaceLabels } from '../../context/node/resolvers/promptWorkspaceLabels';
 import { ChatAgentService } from '../../conversation/vscode-node/chatParticipants';
@@ -266,6 +268,8 @@ export function registerServices(builder: IInstantiationServiceBuilder, extensio
 	builder.define(IInlineEditsModelService, new SyncDescriptor(InlineEditsModelService));
 	builder.define(IUndesiredModelsManager, new SyncDescriptor(UndesiredModels.Manager));
 	builder.define(ICopilotInlineCompletionItemProviderService, new SyncDescriptor(CopilotInlineCompletionItemProviderService));
+	builder.define(IHarnessModelCompletionsService, new SyncDescriptor(HarnessModelCompletionsService));
+	builder.define(IBYOKStorageService, new SyncDescriptor(BYOKStorageService));
 	builder.define(ISimilarFilesContextService, new SyncDescriptor(SimilarFilesContextService));
 	builder.define(IGitHubOrgChatResourcesService, new SyncDescriptor(GitHubOrgChatResourcesService));
 	builder.define(IToolResultContentRenderer, new SyncDescriptor(ToolResultContentRenderer));

@@ -81,7 +81,7 @@ const compilations = [
 	'extensions/npm/tsconfig.json',
 	'extensions/php-language-features/tsconfig.json',
 	'extensions/references-view/tsconfig.json',
-	'extensions/run-chat/tsconfig.json',
+	'extensions/run-product/tsconfig.json',
 	'extensions/search-result/tsconfig.json',
 	'extensions/simple-browser/tsconfig.json',
 	'extensions/tunnel-forwarding/tsconfig.json',
@@ -288,7 +288,9 @@ task.task(compileNativeExtensionsBuildTask);
  * Compiles the built-in copilot extension for the build.
  * Used by non-CI local builds where copilot is not downloaded as a VSIX.
  */
-export const compileCopilotExtensionBuildTask = task.define('compile-copilot-extension-build', async () => { });
+export const compileCopilotExtensionBuildTask = task.define('compile-copilot-extension-build', () => {
+	return ext.packageCopilotExtensionStream(false).pipe(gulp.dest('.build'));
+});
 task.task(compileCopilotExtensionBuildTask);
 
 /**
@@ -298,6 +300,7 @@ task.task(compileCopilotExtensionBuildTask);
 export const compileAllExtensionsBuildTask = task.define('compile-extensions-build', task.series(
 	cleanExtensionsBuildTask,
 	bundleMarketplaceExtensionsBuildTask,
+	compileCopilotExtensionBuildTask,
 	task.define('bundle-extensions-build', () => ext.packageAllLocalExtensionsStream(false, false).pipe(gulp.dest('.build'))),
 ));
 task.task(compileAllExtensionsBuildTask);

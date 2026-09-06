@@ -18,9 +18,22 @@ import { SnippetString } from '../../../vs/workbench/api/common/extHostTypes/sni
 import { SnippetTextEdit } from '../../../vs/workbench/api/common/extHostTypes/snippetTextEdit';
 import { SymbolInformation, SymbolKind } from '../../../vs/workbench/api/common/extHostTypes/symbolInformation';
 import { EndOfLine, TextEdit } from '../../../vs/workbench/api/common/extHostTypes/textEdit';
+class InlineCompletionList {
+	items: unknown[];
+	constructor(items: unknown[] = []) {
+		this.items = items;
+	}
+}
+
+class InlineCompletionItem {
+	insertText: string;
+	constructor(insertText: string = '') {
+		this.insertText = insertText;
+	}
+}
 import { AISearchKeyword, ChatErrorLevel, ChatInputNotificationSeverity, ChatQuestion, ChatQuestionType, ChatReferenceBinaryData, ChatReferenceDiagnostic, ChatRequestEditedFileEventKind, ChatRequestEditorData, ChatRequestNotebookData, ChatRequestTurn, ChatRequestTurn2, ChatResponseAnchorPart, ChatResponseAutoModeResolutionPart, ChatResponseClearToPreviousToolInvocationReason, ChatResponseCodeblockUriPart, ChatResponseCodeCitationPart, ChatResponseCommandButtonPart, ChatResponseConfirmationPart, ChatResponseExtensionsPart, ChatResponseExternalEditPart, ChatResponseFileTreePart, ChatResponseHookPart, ChatResponseInfoPart, ChatResponseMarkdownPart, ChatResponseMarkdownWithVulnerabilitiesPart, ChatResponseMovePart, ChatResponseNotebookEditPart, ChatResponseProgressPart, ChatResponseProgressPart2, ChatResponsePullRequestPart, ChatResponseQuestionCarouselPart, ChatResponseReferencePart, ChatResponseReferencePart2, ChatResponseTextEditPart, ChatResponseThinkingProgressPart, ChatResponseTurn, ChatResponseTurn2, ChatResponseVoiceProgressPart, ChatResponseWarningPart, ChatResponseWorkspaceEditPart, ChatSessionStatus, ChatSubagentToolInvocationData, ChatToolInvocationPart, ExcludeSettingOptions, LanguageModelChatMessage, LanguageModelChatMessageRole, LanguageModelChatToolMode, LanguageModelDataPart, LanguageModelDataPart2, LanguageModelError, LanguageModelPartAudience, LanguageModelPromptTsxPart, LanguageModelTextPart, LanguageModelTextPart2, LanguageModelThinkingPart, LanguageModelToolCallPart, LanguageModelToolExtensionSource, LanguageModelToolMCPSource, LanguageModelToolResult, LanguageModelToolResult2, LanguageModelToolResultPart, LanguageModelToolResultPart2, McpHttpServerDefinition, McpStdioServerDefinition, McpToolInvocationContentData, TextSearchMatch2 } from './chatTypes';
 import { TextDocumentChangeReason, TextEditorSelectionChangeKind, WorkspaceEdit } from './editing';
-import { ChatLocation, ChatVariableLevel, DiagnosticSeverity, ExtensionMode, FileType, TextEditorCursorStyle, TextEditorLineNumbersStyle, TextEditorRevealType } from './enums';
+import { ChatLocation, ChatVariableLevel, ColorThemeKind, ConfigurationTarget, DiagnosticSeverity, ExtensionMode, FileType, QuickPickItemKind, TextEditorCursorStyle, TextEditorLineNumbersStyle, TextEditorRevealType } from './enums';
 import { t } from './l10n';
 import { NewSymbolName, NewSymbolNameTag, NewSymbolNameTriggerKind } from './newSymbolName';
 import { TerminalShellExecutionCommandLineConfidence } from './terminal';
@@ -48,6 +61,9 @@ const shim: typeof vscodeTypes = {
 		t
 	},
 	ExtensionMode,
+	ConfigurationTarget,
+	ColorThemeKind,
+	QuickPickItemKind,
 	ChatVariableLevel,
 	ChatResponseClearToPreviousToolInvocationReason,
 	ChatResponseMarkdownPart,
@@ -137,7 +153,9 @@ const shim: typeof vscodeTypes = {
 	},
 	McpHttpServerDefinition,
 	McpStdioServerDefinition,
-	ThemeIcon
+	ThemeIcon,
+	InlineCompletionList: <any>InlineCompletionList,
+	InlineCompletionItem: <any>InlineCompletionItem,
 };
 
 export = shim;

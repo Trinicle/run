@@ -58,7 +58,7 @@ class FakeAcpAgent extends Disposable implements acp.Agent {
 	initialize(params: acp.InitializeRequest): acp.InitializeResponse {
 		return {
 			protocolVersion: params.protocolVersion,
-			agentCapabilities: { loadSession: this._options.loadSession === true, mcpCapabilities: { acp: true, stdio: true } },
+			agentCapabilities: { loadSession: this._options.loadSession === true, mcpCapabilities: { acp: true } },
 			authMethods: this._options.authMethods ? [...this._options.authMethods] : [],
 		};
 	}
@@ -165,7 +165,7 @@ suite('ACP agent provider', () => {
 		};
 		const store = registerAcpAgentProviders(
 			instantiationService as IInstantiationService,
-			providerService as IAgentHostProviderService,
+			providerService as unknown as IAgentHostProviderService,
 			resolveAcpAgentDefinitions(undefined, [{ id: 'gemini', command: 'gemini' }]),
 		);
 		store.dispose();
@@ -180,7 +180,7 @@ suite('ACP agent provider', () => {
 	});
 
 	test('createChat + sendMessage maps ACP text into AgentSignals then completes the turn', async () => {
-		let fake: FakeAcpAgent;
+		let fake!: FakeAcpAgent;
 		const { client } = createLinkedAcpTransports(connection => fake = new FakeAcpAgent(connection, {
 			onPrompt: async () => {
 				await connection.sessionUpdate({
@@ -211,7 +211,7 @@ suite('ACP agent provider', () => {
 	});
 
 	test('second sendMessage waits for the in-flight ACP prompt (N clients, one ACP turn)', async () => {
-		let fake: FakeAcpAgent;
+		let fake!: FakeAcpAgent;
 		const { client } = createLinkedAcpTransports(connection => fake = new FakeAcpAgent(connection, { autoCompletePrompt: false }));
 		store.add(client);
 		store.add(fake!);
@@ -242,7 +242,7 @@ suite('ACP agent provider', () => {
 	});
 
 	test('session/new advertises MCP-over-ACP client tools plus configured stdio MCP servers', async () => {
-		let fake: FakeAcpAgent;
+		let fake!: FakeAcpAgent;
 		const { client, agent } = createLinkedAcpTransports(connection => fake = new FakeAcpAgent(connection));
 		store.add(client);
 		store.add(fake!);
@@ -256,12 +256,12 @@ suite('ACP agent provider', () => {
 
 		await provider.chats.createChat(chat, session);
 		const servers = fake.lastNewSessionParams?.mcpServers ?? [];
-		const acpTools = servers.find(server => server.type === 'acp');
+		const acpTools = servers.find(server => 'type' in server && server.type === 'acp') as (acp.McpServerAcp & { type: 'acp' }) | undefined;
 		assert.ok(acpTools);
-		assert.strictEqual(acpTools.type === 'acp' && acpTools.name, ACP_CLIENT_TOOLS_MCP_NAME);
+		assert.strictEqual(acpTools.name, ACP_CLIENT_TOOLS_MCP_NAME);
 		assert.ok(servers.some(server => !('type' in server) && server.name === 'docs' && 'command' in server && server.command === 'npx'));
 
-		const connect = await agent.request<{ connectionId: string }>('mcp/connect', { serverId: acpTools.type === 'acp' ? acpTools.serverId : '' });
+		const connect = await agent.request<{ connectionId: string }>('mcp/connect', { serverId: acpTools.serverId });
 		const listed = await agent.request<{ tools: { name: string }[] }>('mcp/message', {
 			connectionId: connect.connectionId,
 			method: 'tools/list',
@@ -275,7 +275,7 @@ suite('ACP auth and session load', () => {
 	const definition = { id: 'acp-test', command: 'fake-acp', name: 'ACP Test' };
 
 	test('authenticate then loadSession on resume when the agent advertises both', async () => {
-		let fake: FakeAcpAgent;
+		let fake!: FakeAcpAgent;
 		const { client } = createLinkedAcpTransports(connection => fake = new FakeAcpAgent(connection, {
 			loadSession: true,
 			authMethods: [{ id: 'github', name: 'GitHub' }],
@@ -300,6 +300,31 @@ suite('ACP auth and session load', () => {
 
 		await provider.materializeChat(chat, session, JSON.stringify({ acpSessionId: 'acp-resume-1', cwd: '/tmp' }));
 		assert.deepStrictEqual(fake.loadedSessionIds, ['acp-resume-1']);
+	});
+
+	test('skips terminal auth methods when picking authenticate methodId', async () => {
+		let fake!: FakeAcpAgent;
+		const { client } = createLinkedAcpTransports(connection => fake = new FakeAcpAgent(connection, {
+			authMethods: [
+				{ type: 'terminal', id: 'tui', name: 'Terminal' },
+				{ id: 'github', name: 'GitHub' },
+			],
+		}));
+		store.add(client);
+		store.add(fake!);
+
+		const fileService = store.add(new FileService(new NullLogService()));
+		const provider = store.add(new AcpAgentProvider(
+			definition,
+			() => client,
+			new NullLogService(),
+			fileService as IFileService,
+			createConfigService(),
+		));
+
+		assert.strictEqual(await provider.authenticate('github', 'token-1'), true);
+		assert.strictEqual(fake.authenticateCount, 1);
+		assert.strictEqual(fake.lastAuthMethodId, 'github');
 	});
 });
 

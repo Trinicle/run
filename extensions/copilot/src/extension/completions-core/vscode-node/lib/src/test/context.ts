@@ -56,6 +56,7 @@ import { ICompletionsTelemetryUserConfigService, TelemetryUserConfig } from '../
 import { ICompletionsTextDocumentManagerService } from '../textDocumentManager';
 import { ICompletionsPromiseQueueService } from '../util/promiseQueue';
 import { ICompletionsRuntimeModeService, RuntimeMode } from '../util/runtimeMode';
+import { IHarnessModelCompletionsService, NullHarnessModelCompletionsService } from '../../../../../completions/vscode-node/harnessModelCompletionsService';
 import { FakeCopilotTokenManager } from './copilotTokenManager';
 import { NoFetchFetcher } from './fetcher';
 import { TestPromiseQueue } from './telemetry';
@@ -133,6 +134,7 @@ export function createLibTestingContext() {
 	serviceCollection.define(ICompletionsTextDocumentManagerService, new SyncDescriptor(TestTextDocumentManager));
 	serviceCollection.define(ICompletionsFileSystemService, new LocalFileSystem());
 	serviceCollection.define(ICompletionsDefaultContextProviders, new DefaultContextProvidersContainer());
+	serviceCollection.define(IHarnessModelCompletionsService, new NullHarnessModelCompletionsService());
 
 	return serviceCollection;
 }

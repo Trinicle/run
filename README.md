@@ -14,9 +14,7 @@ Third-party notices for bundled dependencies are in [ThirdPartyNotices.txt](Thir
 
 ## Chat
 
-The built-in **Run Chat** extension (`run.run-chat`) provides an OpenAI-compatible language model provider. Set `run.chat.apiBase` and an API key (`Run Chat: Set API Key` or `RUN_CHAT_API_KEY`). Claude and Codex agent-host providers remain available when enabled.
-
-GitHub Copilot is not packaged with this product.
+Run ships the **GitHub Copilot** extension (`GitHub.copilot-chat`) for chat, inline completions, and BYOK model providers. Configure API keys via Copilot BYOK settings or sign in with GitHub for a Copilot subscription. The **Agent Host** harness unifies sidebar chat, tools, completions, and next-edit across BYOK models and ACP agents.
 
 ## Build
 

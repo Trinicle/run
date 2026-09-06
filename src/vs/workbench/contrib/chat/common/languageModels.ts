@@ -85,7 +85,6 @@ const BUILT_IN_BYOK_VENDOR_IDS = new Set<string>([
 export const THIRD_PARTY_PROVIDER_TELEMETRY_NAME = '3p-extension';
 
 const BUILT_IN_BYOK_EXTENSION_IDS = [
-	'run.run-chat',
 	'github.copilot-chat',
 	'github.copilot',
 ];

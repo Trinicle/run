@@ -61,7 +61,6 @@ suite('ACP spawn', function () {
 			const command = findAcpBinary(builtIn.command);
 			if (!command) {
 				this.skip();
-				return;
 			}
 			const definition: IAcpAgentDefinition = { ...builtIn, command };
 			const transport = store.add(spawnAcpTransport(definition, tmpdir()));

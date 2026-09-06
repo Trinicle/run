@@ -441,9 +441,8 @@ export async function dumpFailureDiagnostics(
 			logger.log(`[${label}] no window* directories found under ${logsPath}`);
 		}
 		for (const w of windowDirs) {
-			const chatLogPath = join(logsPath, w, 'exthost', 'run.run-chat', 'Run Chat.log');
-			const legacyChatLogPath = join(logsPath, w, 'exthost', 'GitHub.copilot-chat', 'GitHub Copilot Chat.log');
-			for (const candidate of [chatLogPath, legacyChatLogPath]) {
+			const chatLogPath = join(logsPath, w, 'exthost', 'GitHub.copilot-chat', 'GitHub Copilot Chat.log');
+			for (const candidate of [chatLogPath]) {
 				try {
 					const stat = await fs.promises.stat(candidate);
 					const content = await fs.promises.readFile(candidate, 'utf8');

@@ -301,6 +301,21 @@ suite('AgentHostClientTools', () => {
 		});
 	});
 
+	test('BYOK model and ACP session type share client tools from agentHostActiveClientService', async () => {
+		const editFileTool: IToolData = {
+			id: 'vscode.editFile',
+			toolReferenceName: 'editFile',
+			displayName: 'Edit File',
+			modelDescription: 'Edits a file',
+			source: ToolDataSource.Internal,
+		};
+		const tools = [readFileTool, editFileTool];
+		const byokHarnessTools = await publishedTools(tools, AGENT_HOST_COPILOT_CLI_SESSION_TYPE, false);
+		const acpHarnessTools = await publishedTools(tools, 'agent-host-claude', false);
+		assert.deepStrictEqual(byokHarnessTools, acpHarnessTools);
+		assert.deepStrictEqual(byokHarnessTools, [['editFile', 'Edit File'], ['readFile', 'Read File']]);
+	});
+
 	// ── toolDataToDefinition ─────────────────────────────────────────────
 
 	suite('toolDataToDefinition', () => {

@@ -22,8 +22,42 @@ Hunter Freeland, licensed under the MIT License (see LICENSE.txt).
 Trademarks
 ----------
 
-This product is not Visual Studio Code, is not affiliated with Microsoft,
-and must not be marketed under Microsoft or GitHub trademarks or logos.
+This product is not Visual Studio Code, is not affiliated with Microsoft or
+GitHub, and must not be marketed under Microsoft or GitHub trademarks or logos.
+
+GitHub Copilot extension
+------------------------
+
+This product bundles the GitHub Copilot extension (extensions/copilot/), which
+is licensed separately under the MIT License:
+
+    MIT License
+
+    Copyright (c) Microsoft Corporation. All rights reserved.
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+
+Run is an independent fork and is not affiliated with, endorsed by, or sponsored
+by Microsoft Corporation or GitHub, Inc. The Copilot extension is included as
+third-party software under its own license; use of Copilot features may be
+subject to separate GitHub terms when you choose to sign in or use a Copilot
+subscription.
 
 Third-party components
 ----------------------

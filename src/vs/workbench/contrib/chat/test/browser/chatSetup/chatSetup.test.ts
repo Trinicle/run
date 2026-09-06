@@ -7,6 +7,7 @@ import assert from 'assert';
 import { DeferredPromise } from '../../../../../../base/common/async.js';
 import { CancellationToken, CancellationTokenSource } from '../../../../../../base/common/cancellation.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../../base/test/common/utils.js';
+import { AgentHostAllowSignedOutWhenUsableSettingId } from '../../../../../../platform/agentHost/common/agentService.js';
 import { ChatMicrosoftAuthenticationEnabledSettingId } from '../../../../../../platform/chat/common/chatSettings.js';
 import { IConfigurationService } from '../../../../../../platform/configuration/common/configuration.js';
 import { TestConfigurationService } from '../../../../../../platform/configuration/test/common/testConfigurationService.js';
@@ -131,7 +132,7 @@ suite('Chat setup dialog presentation', () => {
 			buttonLabels: ['Continue with GitHub', 'Continue with Google', 'Continue with Apple', 'Continue with GHE', 'Continue Without Signing In'],
 			lastButton: {
 				label: 'Continue Without Signing In',
-				strategy: ChatSetupStrategy.Canceled,
+				strategy: ChatSetupStrategy.ContinueWithoutSignIn,
 				classes: ['link-button'],
 			},
 			footer: 'By continuing, you agree to GitHub\'s [Terms](https://example.com/terms) and [Privacy Statement](https://example.com/privacy). GitHub Copilot may show [public code](https://example.com/public-code) suggestions and use your data to improve the product. You can change these [settings](https://example.com/settings) anytime.',
@@ -160,6 +161,14 @@ suite('Chat setup dialog presentation', () => {
 			settingOff: false,
 			settingOn: true,
 		});
+	});
+
+	test('offers continue without sign-in when allowSignedOutWhenUsable is enabled', () => {
+		const configurationService = new TestConfigurationService({ [AgentHostAllowSignedOutWhenUsableSettingId]: true });
+		const buttons = getChatSetupDialogButtons(ChatEntitlement.Unknown, undefined, false, false, providers, configurationService);
+
+		assert.strictEqual(buttons.at(-1)?.label, 'Continue Without Signing In');
+		assert.strictEqual(buttons.at(-1)?.strategy, ChatSetupStrategy.ContinueWithoutSignIn);
 	});
 });
 
@@ -204,6 +213,88 @@ suite('Chat setup strategy', () => {
 			useEnterpriseProvider: false,
 			useSocialProvider: 'microsoft',
 			additionalScopes: ['repo'],
+		});
+	});
+
+	test('completes setup when continuing without sign-in and allowSignedOutWhenUsable', async () => {
+		const updates: Array<Record<string, unknown>> = [];
+		let setupCalled = false;
+		const setup = new ChatSetup(
+			{ update(state: Record<string, unknown>) { updates.push(state); } } as never,
+			{
+				value: {
+					setup: async () => {
+						setupCalled = true;
+						return true;
+					},
+				},
+			} as never,
+			{ publicLog2() { } } as never,
+			undefined as never,
+			{ entitlement: ChatEntitlement.Unknown } as never,
+			{ error() { } } as never,
+			{ revealWidget() { } } as never,
+			{ requestWorkspaceTrust: async () => true } as never,
+			{ getDefaultAccountAuthenticationProvider: () => ({ enterprise: false }) } as never,
+			undefined as never,
+			{ isWorkspaceTrusted: () => true } as never,
+			undefined as never,
+			new TestConfigurationService({ [AgentHostAllowSignedOutWhenUsableSettingId]: true }),
+		);
+
+		const result = await setup.run({ setupStrategy: ChatSetupStrategy.ContinueWithoutSignIn, allowContinueWithoutSignIn: true });
+
+		assert.deepStrictEqual({
+			success: result.success,
+			setupCalled,
+			completed: updates.some(update => update.completed === true),
+			later: updates.some(update => update.later === true),
+		}, {
+			success: true,
+			setupCalled: true,
+			completed: true,
+			later: false,
+		});
+	});
+
+	test('cancels setup and defers when canceled', async () => {
+		const updates: Array<Record<string, unknown>> = [];
+		let setupCalled = false;
+		const setup = new ChatSetup(
+			{ update(state: Record<string, unknown>) { updates.push(state); } } as never,
+			{
+				value: {
+					setup: async () => {
+						setupCalled = true;
+						return true;
+					},
+				},
+			} as never,
+			{ publicLog2() { } } as never,
+			undefined as never,
+			{ entitlement: ChatEntitlement.Unknown } as never,
+			{ error() { } } as never,
+			{ revealWidget() { } } as never,
+			{ requestWorkspaceTrust: async () => true } as never,
+			{ getDefaultAccountAuthenticationProvider: () => ({ enterprise: false }) } as never,
+			undefined as never,
+			{ isWorkspaceTrusted: () => true } as never,
+			undefined as never,
+			new TestConfigurationService({ [AgentHostAllowSignedOutWhenUsableSettingId]: true }),
+		);
+
+		const result = await setup.run({ setupStrategy: ChatSetupStrategy.Canceled });
+
+		assert.deepStrictEqual({
+			success: result.success,
+			setupCalled,
+			completed: updates.some(update => update.completed === true),
+			later: updates.some(update => update.later === true),
+		}, {
+			success: undefined,
+			setupCalled: false,
+			completed: false,
+			later: true,
 		});
 	});
 });

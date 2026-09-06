@@ -902,7 +902,7 @@ function splitContributedProfiles(contributedProfiles: readonly IExtensionTermin
 
 function isAiContributedProfile(profile: IExtensionTerminalProfile): boolean {
 	const extensionIdentifier = profile.extensionIdentifier.toLowerCase();
-	if (extensionIdentifier === 'github.copilot-chat' || extensionIdentifier === 'run.run-chat' || extensionIdentifier === 'anthropic.claude-code') {
+	if (extensionIdentifier === 'github.copilot-chat' || extensionIdentifier === 'anthropic.claude-code') {
 		return true;
 	}
 

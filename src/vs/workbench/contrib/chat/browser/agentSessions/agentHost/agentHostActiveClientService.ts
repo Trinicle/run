@@ -34,7 +34,7 @@ import { IConfigurationResolverService } from '../../../../../services/configura
 import { AgentCustomizationSyncProvider } from './agentCustomizationSyncProvider.js';
 import { type ILocalCustomizationSyncOptions, resolveCustomizationRefs, resolveLocalCustomAgents } from './agentHostLocalCustomizations.js';
 import { toolDataToDefinition } from './agentHostToolUtils.js';
-import { IAgentHostToolSetEnablementService, isCopilotCliSessionType, isToolEnabledInSet } from './agentHostToolSetEnablementService.js';
+import { IAgentHostToolSetEnablementService, isAgentHostClientToolsSessionType, isCopilotCliSessionType, isToolEnabledInSet } from './agentHostToolSetEnablementService.js';
 import { AgentHostMcpServerSupportScope, IAgentHostMcpServerSupportScope } from './agentHostMcpServerSupportScope.js';
 import { type ISyncedCustomizationOrigin, SyncedCustomizationBundler } from './syncedCustomizationBundler.js';
 import { Iterable } from '../../../../../../base/common/iterator.js';
@@ -370,6 +370,10 @@ export class AgentHostActiveClientService extends Disposable implements IAgentHo
 				const tools = this._allToolsObs.read(reader);
 				const toolSets = this._allToolSetsObs.read(reader);
 				const enablement = this._toolSetEnablementService.observe(sessionType).read(reader);
+				const hasClientTools = isAgentHostClientToolsSessionType(sessionType);
+				if (!hasClientTools) {
+					return [];
+				}
 				const isCopilotSession = isCopilotCliSessionType(sessionType);
 				const semanticSearchEnabled = isCopilotSession && this._semanticSearchEnabled.read(reader);
 				const semanticSearchTool = isCopilotSession

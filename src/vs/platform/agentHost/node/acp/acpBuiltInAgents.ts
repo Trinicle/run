@@ -12,6 +12,9 @@ import type { IAcpAgentDefinition } from './acpAgentConfig.js';
  * Built-in ACP agents registered as their own picker rows. User
  * `chat.agentHost.acpAgents` entries merge after these; the same `id`
  * overrides only that built-in's command/args/env.
+ *
+ * These agents do not require GitHub Copilot sign-in when their protected
+ * resource set is empty (see `agentHostProviderRequiresCopilotSignIn`).
  */
 export const BUILTIN_ACP_AGENTS: readonly IAcpAgentDefinition[] = [
 	{

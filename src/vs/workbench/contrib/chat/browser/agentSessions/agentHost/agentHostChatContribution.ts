@@ -41,10 +41,23 @@ import { AgentHostLanguageModelProvider, agentHostProviderSupportsAutoModel } fr
 import { AgentHostSessionHandler } from './agentHostSessionHandler.js';
 import { AgentHostPromptCacheNotification } from './agentHostPromptCacheNotification.js';
 import { IAgentHostActiveClientService } from './agentHostActiveClientService.js';
+import { AGENT_HOST_ACP_BUILTIN_PROVIDERS } from './agentHostToolSetEnablementService.js';
 import { IAgentHostProtectedResourcesService } from './agentHostProtectedResourcesService.js';
 import { AICustomizationManagementSection } from '../../../common/aiCustomizationWorkspaceService.js';
 
 const LOCAL_AGENT_HOST_SESSION_TYPE_PREFIX = 'agent-host-';
+
+function agentHostProviderRequiresCopilotSignIn(
+	protectedResourcesService: IAgentHostProtectedResourcesService,
+	provider: AgentProvider,
+): boolean {
+	const resources = protectedResourcesService.getProtectedResources(provider);
+	if (resources !== undefined) {
+		return protectedResourcesRequireGitHubCopilotSignIn(resources);
+	}
+	// Built-in ACP agents advertise no protected resources and are usable without GitHub sign-in.
+	return !(AGENT_HOST_ACP_BUILTIN_PROVIDERS as readonly string[]).includes(provider);
+}
 
 languageModelSourcePresentationRegistry.register({
 	ownerVendor: 'agent-host-codex',
@@ -295,10 +308,7 @@ export class AgentHostContribution extends Disposable implements IWorkbenchContr
 			// OpenAI) is usable without signing in. Falls back to "required" until the
 			// agent host resolves. The paired `onDidChangeRequiresCopilotSignIn` lets
 			// the sessions service re-evaluate this when the set changes.
-			requiresCopilotSignIn: () => {
-				const resources = this._protectedResourcesService.getProtectedResources(agent.provider);
-				return resources !== undefined ? protectedResourcesRequireGitHubCopilotSignIn(resources) : true;
-			},
+			requiresCopilotSignIn: () => agentHostProviderRequiresCopilotSignIn(this._protectedResourcesService, agent.provider),
 			onDidChangeRequiresCopilotSignIn: Event.signal(Event.filter(this._protectedResourcesService.onDidChange, provider => provider === agent.provider, store)),
 			agentHostProviderId: agent.provider,
 			supportsDelegation: true,

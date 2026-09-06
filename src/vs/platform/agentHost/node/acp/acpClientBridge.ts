@@ -6,6 +6,8 @@
 import * as acp from '@agentclientprotocol/sdk';
 import { VSBuffer } from '../../../../base/common/buffer.js';
 import { DeferredPromise } from '../../../../base/common/async.js';
+import { isAbsolute, join, normalize } from '../../../../base/common/path.js';
+import { isEqualOrParent } from '../../../../base/common/resources.js';
 import { URI } from '../../../../base/common/uri.js';
 import { generateUuid } from '../../../../base/common/uuid.js';
 import type { IFileService } from '../../../files/common/files.js';
@@ -35,13 +37,19 @@ interface IPendingPermission {
 	readonly deferred: DeferredPromise<IAcpPermissionOutcome>;
 }
 
+interface IMcpConnection {
+	readonly serverId: string;
+	readonly chat?: URI;
+}
+
 /**
  * Handles ACP reverse requests: permissions (first AHP client wins),
  * filesystem methods, and MCP-over-ACP client-tool callbacks.
  */
 export class AcpClientBridge implements acp.Client {
 	private readonly _pendingPermissions = new Map<string, IPendingPermission>();
-	private readonly _mcpConnections = new Map<string, string>();
+	private readonly _chatByServerId = new Map<string, URI>();
+	private readonly _mcpConnections = new Map<string, IMcpConnection>();
 	private readonly _pendingClientTools = new Map<string, DeferredPromise<Record<string, unknown>>>();
 	private _clientToolsServerId: string | undefined;
 
@@ -57,6 +65,20 @@ export class AcpClientBridge implements acp.Client {
 	get clientToolsServerId(): string {
 		this._clientToolsServerId ??= generateUuid();
 		return this._clientToolsServerId;
+	}
+
+	registerChatToolsServer(chat: URI): string {
+		const serverId = generateUuid();
+		this._chatByServerId.set(serverId, chat);
+		return serverId;
+	}
+
+	unregisterChatToolsServer(chat: URI): void {
+		for (const [serverId, c] of this._chatByServerId.entries()) {
+			if (c.toString() === chat.toString()) {
+				this._chatByServerId.delete(serverId);
+			}
+		}
 	}
 
 	/**
@@ -104,12 +126,16 @@ export class AcpClientBridge implements acp.Client {
 		if (!this._fileService) {
 			throw new Error('Filesystem access is not available');
 		}
-		const file = await this._fileService.readFile(URI.file(params.path));
+		if (!params.path || typeof params.path !== 'string') {
+			throw new Error('Invalid file path');
+		}
+		const fileUri = this._resolveFsUri(params.path);
+		const file = await this._fileService.readFile(fileUri);
 		let text = file.value.toString();
-		if (params.line !== undefined || params.limit !== undefined) {
+		if (params.line !== undefined && params.line !== null || params.limit !== undefined && params.limit !== null) {
 			const lines = text.split(/\r?\n/);
 			const start = Math.max(0, (params.line ?? 1) - 1);
-			const end = params.limit !== undefined ? start + params.limit : lines.length;
+			const end = params.limit != null ? start + params.limit : lines.length;
 			text = lines.slice(start, end).join('\n');
 		}
 		return { content: text };
@@ -119,7 +145,34 @@ export class AcpClientBridge implements acp.Client {
 		if (!this._fileService) {
 			throw new Error('Filesystem access is not available');
 		}
-		await this._fileService.writeFile(URI.file(params.path), VSBuffer.fromString(params.content));
+		if (!params.path || typeof params.path !== 'string') {
+			throw new Error('Invalid file path');
+		}
+		const fileUri = this._resolveFsUri(params.path);
+		await this._fileService.writeFile(fileUri, VSBuffer.fromString(params.content));
+	}
+
+	private _resolveFsUri(filePath: string): URI {
+		if (filePath.includes('\0')) {
+			throw new Error('Invalid file path: contains null character');
+		}
+		const active = this._activeTurn();
+		const activeCwd = active ? this._sessions.getByChat(active.chat)?.cwd : undefined;
+		let resolvedPath = filePath;
+		if (!isAbsolute(filePath)) {
+			if (activeCwd) {
+				resolvedPath = join(activeCwd, filePath);
+			}
+		}
+		const normalized = normalize(resolvedPath);
+		const targetUri = URI.file(normalized);
+		if (activeCwd) {
+			const cwdUri = URI.file(normalize(activeCwd));
+			if (!isEqualOrParent(targetUri, cwdUri)) {
+				throw new Error(`File access denied: path ${filePath} is outside working directory ${activeCwd}`);
+			}
+		}
+		return targetUri;
 	}
 
 	extMethod(method: string, params: Record<string, unknown>): Promise<Record<string, unknown>> | Record<string, unknown> {
@@ -162,40 +215,62 @@ export class AcpClientBridge implements acp.Client {
 	private _handleMcpConnect(params: IAcpMcpConnectParams): { connectionId: string } {
 		const serverId = params.serverId ?? params.acpId ?? '';
 		const connectionId = generateUuid();
-		this._mcpConnections.set(connectionId, serverId);
+		const chat = this._chatByServerId.get(serverId);
+		this._mcpConnections.set(connectionId, { serverId, chat });
 		return { connectionId };
 	}
 
 	private async _handleMcpMessage(params: IAcpMcpMessageParams): Promise<Record<string, unknown>> {
-		const acpId = this._mcpConnections.get(params.connectionId);
-		if (acpId !== this.clientToolsServerId && acpId !== ACP_CLIENT_TOOLS_MCP_NAME) {
+		const connection = this._mcpConnections.get(params.connectionId);
+		if (!connection) {
+			throw new Error(`Unknown MCP-over-ACP connection: ${params.connectionId}`);
+		}
+		const acpId = connection.serverId;
+		const isRegisteredChat = this._chatByServerId.has(acpId);
+		if (!isRegisteredChat && acpId !== this.clientToolsServerId && acpId !== ACP_CLIENT_TOOLS_MCP_NAME) {
 			throw new Error(`Unknown MCP-over-ACP connection: ${params.connectionId}`);
 		}
 		switch (params.method) {
 			case 'tools/list':
 				return { tools: this._toolSet.merged().map(toMcpTool) };
 			case 'tools/call':
-				return this._callClientTool(params);
+				return this._callClientTool(params, connection);
 			default:
 				throw new Error(`Unsupported MCP method: ${params.method}`);
 		}
 	}
 
-	private async _callClientTool(params: IAcpMcpMessageParams): Promise<Record<string, unknown>> {
+	private async _callClientTool(params: IAcpMcpMessageParams, connection: IMcpConnection): Promise<Record<string, unknown>> {
 		const call = (params.params ?? {}) as { name?: string; arguments?: unknown };
 		const toolName = call.name ?? '';
 		const owner = this._toolSet.ownerOf(toolName);
 		const toolCallId = generateUuid();
-		const current = this._activeTurn();
-		if (!current) {
+		let targetChat = connection.chat;
+		let turnId: string | undefined;
+
+		if (targetChat) {
+			const session = this._sessions.getByChat(targetChat);
+			turnId = session?.turnId;
+		}
+
+		if (!targetChat || !turnId) {
+			const active = this._activeTurn();
+			if (active) {
+				targetChat = active.chat;
+				turnId = active.turnId;
+			}
+		}
+
+		if (!targetChat || !turnId) {
 			throw new Error(`No in-flight ACP turn for client tool ${toolName}`);
 		}
+
 		this._emit({
 			kind: 'action',
-			resource: current.chat,
+			resource: targetChat,
 			action: {
 				type: ActionType.ChatToolCallStart,
-				turnId: current.turnId,
+				turnId,
 				toolCallId,
 				toolName,
 				displayName: toolName,
@@ -204,10 +279,10 @@ export class AcpClientBridge implements acp.Client {
 		});
 		this._emit({
 			kind: 'action',
-			resource: current.chat,
+			resource: targetChat,
 			action: {
 				type: ActionType.ChatToolCallReady,
-				turnId: current.turnId,
+				turnId,
 				toolCallId,
 				invocationMessage: toolName,
 				confirmed: ToolCallConfirmationReason.NotNeeded,

@@ -1,0 +1,59 @@
+{
+	"name": "run-product",
+	"displayName": "%displayName%",
+	"description": "%description%",
+	"version": "1.0.0",
+	"publisher": "run",
+	"license": "MIT",
+	"engines": {
+		"vscode": "^1.100.0"
+	},
+	"categories": [
+		"Other"
+	],
+	"activationEvents": [
+		"onStartupFinished"
+	],
+	"main": "./out/extension",
+	"contributes": {
+		"configurationDefaults": {
+			"chat.agentHost.allowSignedOutWhenUsable": true,
+			"github.copilot.clientByokEnabled": true
+		},
+		"walkthroughs": [
+			{
+				"id": "run.welcome",
+				"title": "%walkthrough.title%",
+				"description": "%walkthrough.description%",
+				"steps": [
+					{
+						"id": "run.welcome.byok",
+						"title": "%walkthrough.byok.title%",
+						"description": "%walkthrough.byok.description%",
+						"media": {
+							"markdown": "media/byok.md"
+						}
+					},
+					{
+						"id": "run.welcome.acp",
+						"title": "%walkthrough.acp.title%",
+						"description": "%walkthrough.acp.description%",
+						"media": {
+							"markdown": "media/acp.md"
+						}
+					}
+				]
+			}
+		],
+		"commands": [
+			{
+				"command": "run.welcome.open",
+				"title": "%command.openWelcome%"
+			}
+		]
+	},
+	"scripts": {
+		"compile": "gulp compile-extension:run-product",
+		"watch": "gulp watch-extension:run-product"
+	}
+}

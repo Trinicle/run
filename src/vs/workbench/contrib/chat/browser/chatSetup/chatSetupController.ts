@@ -26,6 +26,7 @@ import { ITelemetryService } from '../../../../../platform/telemetry/common/tele
 import { IActivityService, ProgressBadge } from '../../../../services/activity/common/activity.js';
 import { ILifecycleService } from '../../../../services/lifecycle/common/lifecycle.js';
 import { IExtensionsWorkbenchService } from '../../../extensions/common/extensions.js';
+import { AgentHostAllowSignedOutWhenUsableSettingId } from '../../../../../platform/agentHost/common/agentService.js';
 import { ChatEntitlement, ChatEntitlementContext, ChatEntitlementRequests, isProUser } from '../../../../services/chat/common/chatEntitlementService.js';
 import { CHAT_OPEN_ACTION_ID } from '../actions/chatActions.js';
 import { ChatViewContainerId, ChatViewId } from '../chat.js';
@@ -121,12 +122,13 @@ export class ChatSetupController extends Disposable {
 		try {
 			let entitlement: ChatEntitlement | undefined;
 
+			const allowSignedOut = this.configurationService.getValue<boolean>(AgentHostAllowSignedOutWhenUsableSettingId) === true;
 			let signIn: boolean;
 			if (options.forceSignIn) {
 				signIn = true; // forced to sign in
 			} else if (this.context.state.entitlement === ChatEntitlement.Unknown) {
-				if (options.forceAnonymous) {
-					signIn = false; // forced to anonymous without sign in
+				if (options.forceAnonymous || allowSignedOut) {
+					signIn = false; // local-first / anonymous: do not force GitHub OAuth
 				} else {
 					signIn = true; // sign in since we are signed out
 				}
@@ -222,8 +224,10 @@ export class ChatSetupController extends Disposable {
 		}
 
 		try {
+			const allowSignedOut = this.configurationService.getValue<boolean>(AgentHostAllowSignedOutWhenUsableSettingId) === true;
 			if (
 				!options.forceAnonymous &&						// User is not asking for anonymous access
+				!(allowSignedOut && entitlement === ChatEntitlement.Unknown) &&	// local-first: skip Copilot Free signup
 				entitlement !== ChatEntitlement.Free &&			// User is not signed up to Copilot Free
 				!isProUser(entitlement) &&						// User is not signed up for a Copilot subscription
 				entitlement !== ChatEntitlement.Unavailable		// User is eligible for Copilot Free

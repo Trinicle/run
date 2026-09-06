@@ -67,6 +67,7 @@ import { ICompletionsTelemetryUserConfigService, TelemetryUserConfig } from './l
 import { ICompletionsTextDocumentManagerService } from './lib/src/textDocumentManager';
 import { ICompletionsPromiseQueueService, PromiseQueue } from './lib/src/util/promiseQueue';
 import { ICompletionsRuntimeModeService, RuntimeMode } from './lib/src/util/runtimeMode';
+import { IHarnessModelCompletionsService } from '../../completions/vscode-node/harnessModelCompletionsService';
 
 /** @public */
 export function createContext(serviceAccessor: ServicesAccessor, store: DisposableStore): IInstantiationService {
@@ -121,6 +122,8 @@ export function createContext(serviceAccessor: ServicesAccessor, store: Disposab
 	serviceCollection.set(ICompletionsPromptFactoryService, new SyncDescriptor(CompletionsPromptFactory));
 	serviceCollection.set(ICompletionsFetcherService, new SyncDescriptor(CompletionsFetcher));
 	serviceCollection.set(ICompletionsDefaultContextProviders, new DefaultContextProvidersContainer());
+
+	serviceCollection.set(IHarnessModelCompletionsService, serviceAccessor.get(IHarnessModelCompletionsService));
 
 	return serviceAccessor.get(IInstantiationService).createChild(serviceCollection, store);
 }
