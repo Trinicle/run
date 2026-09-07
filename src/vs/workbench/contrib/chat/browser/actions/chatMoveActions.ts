@@ -19,7 +19,7 @@ import { isChatViewTitleActionContext } from '../../common/actions/chatActions.j
 import { ChatContextKeys } from '../../common/actions/chatContextKeys.js';
 import { ChatAgentLocation } from '../../common/constants.js';
 import { ChatViewId, IChatWidgetService } from '../chat.js';
-import { ChatEditor, IChatEditorOptions } from '../widgetHosts/editor/chatEditor.js';
+import { IChatEditorOptions } from '../widgetHosts/editor/chatEditor.js';
 import { ChatEditorInput } from '../widgetHosts/editor/chatEditorInput.js';
 import { ChatViewPane } from '../widgetHosts/viewPane/chatViewPane.js';
 import { CHAT_CATEGORY } from './chatActions.js';
@@ -112,6 +112,20 @@ export function registerMoveActions() {
 }
 
 async function executeMoveToAction(accessor: ServicesAccessor, moveTo: MoveToNewLocation, sessionResource?: URI) {
+	const editorGroupService = accessor.get(IEditorGroupsService);
+	const editorService = accessor.get(IEditorService);
+
+	const activeEditor = editorService.activeEditor;
+	const activeGroup = editorGroupService.activeGroup;
+
+	if (activeEditor instanceof ChatEditorInput && activeGroup && moveTo === MoveToNewLocation.Editor) {
+		const targetGroup = editorGroupService.mainPart.activeGroup;
+		if (activeGroup !== targetGroup) {
+			activeGroup.moveEditor(activeEditor, targetGroup);
+			return;
+		}
+	}
+
 	const widgetService = accessor.get(IChatWidgetService);
 
 	const auxiliary = { compact: true, bounds: { width: 800, height: 640 } };
@@ -143,26 +157,23 @@ async function executeMoveToAction(accessor: ServicesAccessor, moveTo: MoveToNew
 }
 
 async function moveToSidebar(accessor: ServicesAccessor): Promise<void> {
-	const viewsService = accessor.get(IViewsService);
 	const editorService = accessor.get(IEditorService);
-	const editorGroupService = accessor.get(IEditorGroupsService);
+	const viewsService = accessor.get(IViewsService);
 
 	const chatEditor = editorService.activeEditorPane;
 	const chatEditorInput = chatEditor?.input;
-	let view: ChatViewPane;
-	if (chatEditor instanceof ChatEditor && chatEditorInput instanceof ChatEditorInput && chatEditorInput.sessionResource) {
-		const previousInputState = chatEditor.widget.getInputState();
-		await editorService.closeEditor({ editor: chatEditor.input, groupId: editorGroupService.activeGroup.id });
-		view = await viewsService.openView(ChatViewId) as ChatViewPane;
 
-		// Todo: can possibly go away with https://github.com/microsoft/vscode/pull/278476
-		const newModel = await view.loadSession(chatEditorInput.sessionResource);
-		if (previousInputState && newModel && !newModel.inputModel.state.get()) {
-			newModel.inputModel.setState(previousInputState);
+	const view = (await viewsService.openView(ChatViewId)) as ChatViewPane | undefined;
+	if (chatEditorInput instanceof ChatEditorInput && view && chatEditor?.group) {
+		if (view.editorPart) {
+			chatEditor.group.moveEditor(chatEditorInput, view.editorPart.activeGroup);
+		} else {
+			const sessionResource = chatEditorInput.sessionResource ?? chatEditorInput.resource;
+			if (sessionResource) {
+				await view.loadSession(sessionResource);
+				await chatEditor.group.closeEditor(chatEditorInput);
+			}
 		}
-	} else {
-		view = await viewsService.openView(ChatViewId) as ChatViewPane;
 	}
-
-	view.focus();
+	view?.focus();
 }

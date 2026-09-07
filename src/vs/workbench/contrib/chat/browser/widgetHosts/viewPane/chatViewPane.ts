@@ -11,8 +11,6 @@ import {
 	EventHelper,
 	EventType,
 	getWindow,
-	hide,
-	show,
 } from "../../../../../../base/browser/dom.js";
 import { StandardMouseEvent } from "../../../../../../base/browser/mouseEvent.js";
 import { DomScrollableElement } from "../../../../../../base/browser/ui/scrollbar/scrollableElement.js";
@@ -69,11 +67,11 @@ import { ITelemetryService } from "../../../../../../platform/telemetry/common/t
 import { IWorkspaceContextService } from "../../../../../../platform/workspace/common/workspace.js";
 import { editorBackground } from "../../../../../../platform/theme/common/colorRegistry.js";
 import { ChatViewTitleControl } from "./chatViewTitleControl.js";
-import {
-	ChatSessionTabsControl,
-	getChatSessionTabCloseKeybinding,
-	getChatSessionTabTitle,
-} from "./chatSessionTabsControl.js";
+import { ChatEditorPart } from "./chatEditorPart.js";
+import { ChatEditor } from "../editor/chatEditor.js";
+import { IEditorPartsView } from "../../../../../browser/parts/editor/editor.js";
+import { IEditorGroupsService } from "../../../../../services/editor/common/editorGroupsService.js";
+import { mainWindow } from "../../../../../../base/browser/window.js";
 import { IThemeService } from "../../../../../../platform/theme/common/themeService.js";
 import { isDark } from "../../../../../../platform/theme/common/theme.js";
 import { IAccessibilityService } from "../../../../../../platform/accessibility/common/accessibility.js";
@@ -87,6 +85,7 @@ import {
 	IViewDescriptorService,
 	ViewContainerLocation,
 } from "../../../../../common/views.js";
+import { IViewsService } from "../../../../../services/views/common/viewsService.js";
 import {
 	ILifecycleService,
 	StartupKind,
@@ -223,11 +222,8 @@ export class ChatViewPane extends ViewPane implements IViewWelcomeDelegate {
 	private readonly tabListeners = this._register(
 		new DisposableMap<string, IDisposable>(),
 	);
-	private sessionTabsControl: ChatSessionTabsControl | undefined;
-	private sessionTabsHost: HTMLElement | undefined;
-	private sessionTabsTitle: HTMLElement | undefined;
-	private sessionTabsHiddenHeading: HTMLElement | undefined;
 	private newSessionQueue: Promise<unknown> = Promise.resolve();
+	private chatEditorPart: ChatEditorPart | undefined;
 
 	private readonly activityBadge = this._register(new MutableDisposable());
 	private readonly _currentSessionResource = observableValue<URI | undefined>(
@@ -286,6 +282,10 @@ export class ChatViewPane extends ViewPane implements IViewWelcomeDelegate {
 		private readonly agentHostEnablementService: IAgentHostEnablementService,
 		@IAccessibilityService
 		private readonly accessibilityService: IAccessibilityService,
+		@IEditorGroupsService
+		private readonly editorGroupService: IEditorGroupsService,
+		@IViewsService
+		private readonly viewsService: IViewsService,
 	) {
 		super(
 			options,
@@ -465,7 +465,6 @@ export class ChatViewPane extends ViewPane implements IViewWelcomeDelegate {
 			)(() => {
 				this.updateContextKeys();
 				this.updateViewPaneClasses(true /* layout here */);
-				this.attachSessionTabs();
 			}),
 		);
 
@@ -542,8 +541,9 @@ export class ChatViewPane extends ViewPane implements IViewWelcomeDelegate {
 		this.viewPaneContainer.classList.add("chat-viewpane");
 		this.updateViewPaneClasses(false);
 
-		// Controls wrapper — welcome + chat live inside here
+		// Legacy controls wrapper kept hidden for backwards-compatibility of widget references
 		const controlsWrapper = append(parent, $(".voice-agent-controls-wrapper"));
+		controlsWrapper.style.display = "none";
 		this.createControls(controlsWrapper);
 
 		// Voice bar — hidden by default, voice is activated via mic button in toolbar.
@@ -551,6 +551,29 @@ export class ChatViewPane extends ViewPane implements IViewWelcomeDelegate {
 		this._voiceBarContainer = $(".voice-agent-bar-host");
 		this._voiceBarContainer.style.display = "none";
 		this._updateVoiceBar(this._voiceBarContainer);
+
+		// Chat Editor Part Host & Container
+		parent.classList.add("chat-editor-part-host");
+		this.updateChatEditorPartOpen();
+		const editorPartContainer = append(parent, $(".part.editor"));
+		editorPartContainer.style.position = "relative";
+		editorPartContainer.style.width = "100%";
+		editorPartContainer.style.height = "100%";
+
+		const editorPartsView = this.editorGroupService as unknown as IEditorPartsView;
+		this.chatEditorPart = this._register(
+			this.instantiationService.createInstance(
+				ChatEditorPart,
+				editorPartsView,
+				mainWindow.vscodeWindowId,
+			),
+		);
+		this._register(editorPartsView.registerPart(this.chatEditorPart));
+		this.chatEditorPart.create(editorPartContainer);
+		this._register(this.chatEditorPart.onDidBecomeEmpty(() => {
+			this.viewsService.closeView(this.id);
+		}));
+		void this.ensureOpenSession();
 
 		// Transcript overlay — shown inside the input container when voice is active
 		const inputContainerEl = this._widget.inputPart.inputContainerElement;
@@ -567,18 +590,6 @@ export class ChatViewPane extends ViewPane implements IViewWelcomeDelegate {
 		);
 
 		this.setupContextMenu(parent);
-
-		this._register(
-			this.onDidChangeBodyVisibility((visible) => {
-				if (visible) {
-					this.attachSessionTabs();
-				} else {
-					this.detachSessionTabs();
-				}
-			}),
-		);
-		this._register(toDisposable(() => this.detachSessionTabs()));
-		this.attachSessionTabs();
 
 		this.applyModel();
 	}
@@ -1192,7 +1203,17 @@ export class ChatViewPane extends ViewPane implements IViewWelcomeDelegate {
 
 	private _widget!: ChatWidget;
 	get widget(): ChatWidget {
+		if (this.chatEditorPart?.activeGroup.activeEditorPane instanceof ChatEditor) {
+			const chatWidget = (this.chatEditorPart.activeGroup.activeEditorPane as ChatEditor).widget;
+			if (chatWidget) {
+				return chatWidget;
+			}
+		}
 		return this._widget;
+	}
+
+	get editorPart(): ChatEditorPart | undefined {
+		return this.chatEditorPart;
 	}
 
 	private titleControl: ChatViewTitleControl | undefined;
@@ -1691,8 +1712,6 @@ export class ChatViewPane extends ViewPane implements IViewWelcomeDelegate {
 		this.titleControl?.update(model);
 		if (model) {
 			this.ensureSessionTab(model.sessionResource);
-		} else {
-			this.renderSessionTabs();
 		}
 
 		// Update the toolbar context with new sessionId
@@ -1733,14 +1752,8 @@ export class ChatViewPane extends ViewPane implements IViewWelcomeDelegate {
 			);
 			if (extra) {
 				this.tabKeepAlive.set(key, extra);
-				this.tabListeners.set(
-					key,
-					extra.object.onDidChange(() => this.renderSessionTabs()),
-				);
 			}
 		}
-
-		this.renderSessionTabs();
 	}
 
 	private replaceSessionTab(from: URI, to: URI): void {
@@ -1753,120 +1766,6 @@ export class ChatViewPane extends ViewPane implements IViewWelcomeDelegate {
 		this.tabKeepAlive.deleteAndDispose(from.toString());
 		this.tabListeners.deleteAndDispose(from.toString());
 		this.ensureSessionTab(to);
-	}
-
-	private async closeSessionTab(resource: URI): Promise<void> {
-		const key = resource.toString();
-		const wasActive = isEqual(
-			this._widget?.viewModel?.sessionResource,
-			resource,
-		);
-		const remaining = this.openTabResources.filter(
-			(existing) => !isEqual(existing, resource),
-		);
-		this.openTabResources = remaining;
-		this.closingTabKeys.add(key);
-		this.tabKeepAlive.deleteAndDispose(key);
-		this.tabListeners.deleteAndDispose(key);
-
-		try {
-			if (wasActive) {
-				const next = remaining.at(-1);
-				if (next) {
-					await this.loadSession(next);
-				} else {
-					await this.startNewLocalSession();
-				}
-			} else {
-				this.renderSessionTabs();
-			}
-		} finally {
-			this.closingTabKeys.delete(key);
-		}
-	}
-
-	private attachSessionTabs(): void {
-		if (!this.element?.isConnected) {
-			return;
-		}
-
-		const part = this.element.closest(".pane-composite-part");
-		const title = part?.querySelector(
-			":scope > .composite.title, :scope > .title",
-		);
-		const titleLabel = title?.querySelector(":scope > .title-label");
-		if (
-			!(title instanceof HTMLElement) ||
-			!(titleLabel instanceof HTMLElement)
-		) {
-			return;
-		}
-
-		if (this.sessionTabsTitle && this.sessionTabsTitle !== title) {
-			this.detachSessionTabs();
-		}
-
-		title.classList.add("thea-chat-session-tabs");
-		this.sessionTabsTitle = title;
-
-		const heading = titleLabel.querySelector("h2");
-		if (heading instanceof HTMLElement) {
-			hide(heading);
-			this.sessionTabsHiddenHeading = heading;
-		}
-
-		if (!this.sessionTabsHost) {
-			this.sessionTabsHost = $(".thea-chat-tabs-host");
-			this.sessionTabsControl = this._register(
-				new ChatSessionTabsControl(this.sessionTabsHost, {
-					onSelect: (resource) => {
-						if (!isEqual(resource, this._widget?.viewModel?.sessionResource)) {
-							void this.loadSession(resource);
-						}
-					},
-					onClose: (resource) => void this.closeSessionTab(resource),
-					getCloseKeybinding: () => getChatSessionTabCloseKeybinding(this.keybindingService),
-				}),
-			);
-		}
-
-		if (this.sessionTabsHost.parentElement !== titleLabel) {
-			titleLabel.appendChild(this.sessionTabsHost);
-		}
-
-		this.renderSessionTabs();
-	}
-
-	private detachSessionTabs(): void {
-		this.sessionTabsTitle?.classList.remove("thea-chat-session-tabs");
-		if (this.sessionTabsHiddenHeading) {
-			show(this.sessionTabsHiddenHeading);
-			this.sessionTabsHiddenHeading = undefined;
-		}
-		this.sessionTabsHost?.remove();
-		this.sessionTabsTitle = undefined;
-	}
-
-	private renderSessionTabs(): void {
-		if (!this.sessionTabsControl) {
-			return;
-		}
-
-		const active = this._widget?.viewModel?.sessionResource;
-		this.sessionTabsControl.setTabs(
-			this.openTabResources.map((resource) => {
-				const model =
-					this.tabKeepAlive.get(resource.toString())?.object ??
-					(active && isEqual(resource, active)
-						? this.modelRef.value?.object
-						: undefined);
-				return {
-					resource,
-					title: getChatSessionTabTitle(model?.title),
-					active: !!active && isEqual(resource, active),
-				};
-			}),
-		);
 	}
 
 	private async updateWidgetLockState(sessionType: string): Promise<void> {
@@ -1922,6 +1821,11 @@ export class ChatViewPane extends ViewPane implements IViewWelcomeDelegate {
 		sessionResource: URI,
 		sessionTypeSelectionReason?: SessionTypeSelectionReason,
 	): Promise<IChatModel | undefined> {
+		if (this.chatEditorPart) {
+			await this.chatEditorPart.openSession(sessionResource);
+			return undefined;
+		}
+
 		const t0 = Date.now();
 		this.logService.trace(
 			`[ChatViewPane] loadSession start uri=${sessionResource.toString()}`,
@@ -2063,7 +1967,66 @@ export class ChatViewPane extends ViewPane implements IViewWelcomeDelegate {
 	override focus(): void {
 		super.focus();
 
-		this.focusInput();
+		if (this.chatEditorPart) {
+			this.chatEditorPart.activeGroup.focus();
+		} else {
+			this.focusInput();
+		}
+	}
+
+	override set headerVisible(visible: boolean) {
+		super.headerVisible = visible;
+		this.updateChatEditorPartOpen();
+	}
+
+	override get headerVisible(): boolean {
+		return super.headerVisible;
+	}
+
+	override setExpanded(expanded: boolean): boolean {
+		const changed = super.setExpanded(expanded);
+		this.updateChatEditorPartOpen();
+		return changed;
+	}
+
+	override setVisible(visible: boolean): void {
+		super.setVisible(visible);
+		this.updateChatEditorPartOpen();
+		this.chatEditorPart?.setVisible(visible);
+		if (visible) {
+			void this.ensureOpenSession();
+		}
+	}
+
+	private ownsCompositeTitle(): boolean {
+		return this.isBodyVisible() && !this.headerVisible;
+	}
+
+	private updateChatEditorPartOpen(): void {
+		this.setChatEditorPartOpen(this.ownsCompositeTitle());
+	}
+
+	private setChatEditorPartOpen(open: boolean): void {
+		this.element.closest(".part")?.classList.toggle("chat-editor-part-open", open);
+	}
+
+	private ensuringSession: Promise<void> | undefined;
+
+	private async ensureOpenSession(): Promise<void> {
+		if (!this.chatEditorPart || this.chatEditorPart.groups.some(group => group.count > 0)) {
+			return;
+		}
+		if (this.ensuringSession) {
+			await this.ensuringSession;
+			return;
+		}
+
+		this.ensuringSession = this.chatEditorPart.openNewSession().then(() => undefined, () => undefined);
+		try {
+			await this.ensuringSession;
+		} finally {
+			this.ensuringSession = undefined;
+		}
 	}
 
 	focusInput(): void {
@@ -2099,9 +2062,9 @@ export class ChatViewPane extends ViewPane implements IViewWelcomeDelegate {
 
 	private doLayoutBody(height: number, width: number): void {
 		super.layoutBody(height, width);
-		this.attachSessionTabs();
 
 		this.lastDimensions = { height, width };
+		this.chatEditorPart?.layout(width, height, 0, 0);
 		this.layoutChatAndSessions(height, width);
 	}
 
@@ -2139,26 +2102,13 @@ export class ChatViewPane extends ViewPane implements IViewWelcomeDelegate {
 		}
 	}
 
+	override dispose(): void {
+		this.setChatEditorPartOpen(false);
+		super.dispose();
+	}
+
 	override shouldShowWelcome(): boolean {
-		const noPersistedSessions = !this.chatService.hasSessions();
-		const hasCoreAgent = this.chatAgentService
-			.getAgents()
-			.some(
-				(agent) =>
-					agent.isCore && agent.locations.includes(ChatAgentLocation.Chat),
-			);
-		const hasDefaultAgent =
-			this.chatAgentService.getDefaultAgent(ChatAgentLocation.Chat) !==
-			undefined; // only false when Hide AI Features has run and unregistered the setup agents
-		const shouldShow =
-			!hasCoreAgent &&
-			(!hasDefaultAgent || (!this._widget?.viewModel && noPersistedSessions));
-
-		this.logService.trace(
-			`ChatViewPane#shouldShowWelcome() = ${shouldShow}: hasCoreAgent=${hasCoreAgent} hasDefaultAgent=${hasDefaultAgent} || noViewModel=${!this._widget?.viewModel} && noPersistedSessions=${noPersistedSessions}`,
-		);
-
-		return !!shouldShow;
+		return false;
 	}
 
 	getMatchingWelcomeView(): IChatViewsWelcomeDescriptor | undefined {

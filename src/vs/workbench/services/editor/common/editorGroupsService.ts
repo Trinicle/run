@@ -500,6 +500,11 @@ export interface IEditorPart extends IEditorGroupsContainer {
 	readonly windowId: number;
 
 	/**
+	 * The identifier of the editor part.
+	 */
+	readonly partId?: string;
+
+	/**
 	 * The size of the editor part.
 	 */
 	readonly contentDimension: IDimension;
@@ -783,6 +788,11 @@ export interface IEditorGroup {
 	 * group is moved to different locations.
 	 */
 	readonly id: GroupIdentifier;
+
+	/**
+	 * Identifier of the editor part this group belongs to.
+	 */
+	readonly partId?: string;
 
 	/**
 	 * The identifier of the window this editor group is part of.

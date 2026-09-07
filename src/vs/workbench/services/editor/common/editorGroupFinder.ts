@@ -6,7 +6,7 @@
 import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
 import { EditorActivation } from '../../../../platform/editor/common/editor.js';
 import { ServicesAccessor } from '../../../../platform/instantiation/common/instantiation.js';
-import { EditorInputWithOptions, isEditorInputWithOptions, IUntypedEditorInput, isEditorInput, EditorInputCapabilities } from '../../../common/editor.js';
+import { EditorInputWithOptions, isEditorInputWithOptions, IUntypedEditorInput, isEditorInput, EditorInputCapabilities, isResourceEditorInput } from '../../../common/editor.js';
 import { EditorInput } from '../../../common/editor/editorInput.js';
 import { IEditorGroup, GroupsOrder, preferredSideBySideGroupDirection, IEditorGroupsService, IModalEditorPart } from './editorGroupsService.js';
 import { AUX_WINDOW_GROUP, AUX_WINDOW_GROUP_TYPE, MODAL_GROUP, MODAL_GROUP_TYPE, PreferredGroup, SIDE_GROUP, USE_MODAL_EDITOR_SETTING, UseModalEditorMode } from './editorService.js';
@@ -41,10 +41,26 @@ function editorNeverOpensModal(editor: EditorInput | IUntypedEditorInput | undef
 	return editor instanceof EditorInput && editor.hasCapability(EditorInputCapabilities.NeverModal);
 }
 
+function isChatEditor(editor: EditorInput | IUntypedEditorInput | undefined): boolean {
+	if (editor instanceof EditorInput) {
+		return editor.typeId === 'workbench.input.chatSession';
+	}
+	if (isResourceEditorInput(editor)) {
+		return editor.resource.scheme === 'vscode-chat-editor' || editor.resource.scheme === 'vscode-local-chat-session';
+	}
+	return false;
+}
+
 function handleGroupResult(group: IEditorGroup, editor: EditorInputWithOptions | IUntypedEditorInput, preferredGroup: PreferredGroup | undefined, editorGroupService: IEditorGroupsService, configurationService: IConfigurationService): FindGroupResult {
+	const editorInput = isEditorInputWithOptions(editor) ? editor.editor : isEditorInput(editor) ? editor : undefined;
+
+	// If candidate group belongs to ChatEditorPart, route non-chat editors to mainPart active group
+	if ((group.partId === 'workbench.parts.chatEditor' || editorGroupService.getPart(group)?.partId === 'workbench.parts.chatEditor') && !isChatEditor(editorInput)) {
+		group = editorGroupService.mainPart.activeGroup;
+	}
+
 	const modalEditorPart = editorGroupService.activeModalEditorPart;
 	const modalEditorMode = configurationService.getValue<UseModalEditorMode>(USE_MODAL_EDITOR_SETTING);
-	const editorInput = isEditorInputWithOptions(editor) ? editor.editor : isEditorInput(editor) ? editor : undefined;
 	const neverModal = editorNeverOpensModal(editorInput);
 	// The `RequiresModal` capability is honored unless the user has explicitly
 	// disabled modal editors via `workbench.editor.useModal: 'off'`, in which

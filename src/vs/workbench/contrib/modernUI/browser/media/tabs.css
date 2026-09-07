@@ -580,11 +580,6 @@
 	z-index: 11;
 }
 
-.modern-ui-tabs.monaco-workbench .thea-chat-tabs-host > .monaco-scrollable-element .scrollbar {
-	z-index: 11;
-	cursor: default;
-}
-
 .modern-ui-tabs .part.editor .tabs-container > .tab .tab-border-top-container {
 	display: none !important;
 }

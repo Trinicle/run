@@ -225,12 +225,14 @@ export abstract class AbstractPaneCompositePart extends CompositePart<PaneCompos
 
 	protected override showComposite(composite: Composite): void {
 		super.showComposite(composite);
+		this.relayoutCompositeContentsIfTitleVisibilityChanged();
 		this.layoutCompositeBar();
 		this.layoutEmptyMessage();
 	}
 
 	protected override hideActiveComposite(): Composite | undefined {
 		const composite = super.hideActiveComposite();
+		this.relayoutCompositeContentsIfTitleVisibilityChanged();
 		this.layoutCompositeBar();
 		this.layoutEmptyMessage();
 		return composite;
@@ -638,6 +640,11 @@ export abstract class AbstractPaneCompositePart extends CompositePart<PaneCompos
 			workbenchContainer.classList.toggle('floating-panel-outer-right', outerGutter.right);
 		}
 
+		// ChatEditorPart owns native editor tabs. Hide the composite title and
+		// skip its reserved height so content fills the pane instead of leaving
+		// a gap at the bottom.
+		this.updateCompositeTitleVisibility();
+
 		// Layout contents
 		super.layout(this.contentDimension.width, this.contentDimension.height, top, left);
 
@@ -660,6 +667,23 @@ export abstract class AbstractPaneCompositePart extends CompositePart<PaneCompos
 
 	protected override getRelayoutDimension(): Dimension | undefined {
 		return this.floatingLayoutDimension ?? super.getRelayoutDimension();
+	}
+
+	private updateCompositeTitleVisibility(): boolean {
+		const hideCompositeTitle = this.element.classList.contains('chat-editor-part-open');
+		return this.setTitleVisibility(!hideCompositeTitle);
+	}
+
+	private relayoutCompositeContentsIfTitleVisibilityChanged(): void {
+		if (!this.updateCompositeTitleVisibility()) {
+			return;
+		}
+
+		if (!this.contentDimension || !this.contentPosition) {
+			return;
+		}
+
+		super.layout(this.contentDimension.width, this.contentDimension.height, this.contentPosition.top, this.contentPosition.left);
 	}
 
 	/**

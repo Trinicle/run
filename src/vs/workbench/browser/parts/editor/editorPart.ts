@@ -225,6 +225,8 @@ export class EditorPart extends Part<IEditorPartMemento> implements IEditorPart,
 	private _partOptions: IEditorPartOptions;
 	get partOptions(): IEditorPartOptions { return this._partOptions; }
 
+	get partId(): string { return this.getId(); }
+
 	enforcePartOptions(options: DeepPartial<IEditorPartOptions>): IDisposable {
 		this.enforcedPartOptions.push(options);
 		this.handleChangedPartOptions();
@@ -1426,7 +1428,7 @@ export class EditorPart extends Part<IEditorPartMemento> implements IEditorPart,
 		// When the floating panels experiment is enabled, reserve a margin around the
 		// main editor so it floats like the side bar and panel cards. Scope to the main
 		// window (auxiliary editor windows do not apply the matching CSS).
-		if (this.windowId === mainWindow.vscodeWindowId && this.layoutService.isFloatingPanelsEnabled()) {
+		if (this.getId() === Parts.EDITOR_PART && this.windowId === mainWindow.vscodeWindowId && this.layoutService.isFloatingPanelsEnabled()) {
 
 			// When the editor becomes the outermost card on a side (no floating part
 			// sits between it and the window edge) it adopts the same doubled gutter the

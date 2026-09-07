@@ -160,6 +160,14 @@ export abstract class Part<MementoType extends object = object> extends Componen
 		}
 	}
 
+	/**
+	 * Whether the part's title area participates in layout. Hidden titles
+	 * reclaim their reserved height for the content area.
+	 */
+	protected setTitleVisibility(visible: boolean): boolean {
+		return this.partLayout?.setTitleVisibility(visible) ?? false;
+	}
+
 	private relayout() {
 		const dimension = this.getRelayoutDimension();
 		if (dimension && this.contentPosition) {
@@ -223,6 +231,7 @@ class PartLayout {
 
 	private headerVisible: boolean = false;
 	private footerVisible: boolean = false;
+	private titleVisible: boolean = true;
 
 	constructor(
 		private options: IPartOptions,
@@ -233,7 +242,7 @@ class PartLayout {
 	layout(width: number, height: number): ILayoutContentResult {
 		// Title Size: Width (Fill), Height (Variable).
 		let titleSize: Dimension;
-		if (this.options.hasTitle) {
+		if (this.options.hasTitle && this.titleVisible) {
 			const titleHeight = this.layoutService.isFloatingPanelsEnabled() ? PartLayout.AREA_HEIGHT_MODERN_UI : PartLayout.TITLE_HEIGHT;
 			titleSize = new Dimension(width, Math.min(height, titleHeight));
 		} else {
@@ -280,6 +289,15 @@ class PartLayout {
 
 	setHeaderVisibility(visible: boolean): void {
 		this.headerVisible = visible;
+	}
+
+	setTitleVisibility(visible: boolean): boolean {
+		if (this.titleVisible === visible) {
+			return false;
+		}
+
+		this.titleVisible = visible;
+		return true;
 	}
 }
 

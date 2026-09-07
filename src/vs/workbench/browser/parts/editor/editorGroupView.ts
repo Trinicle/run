@@ -993,6 +993,10 @@ export class EditorGroupView extends Themable implements IEditorGroupView {
 		return this.model.id;
 	}
 
+	get partId(): string {
+		return (this.groupsView as unknown as { partId?: string }).partId ?? (this.groupsView as unknown as { getId?(): string }).getId?.() ?? '';
+	}
+
 	get windowId(): number {
 		return this.groupsView.windowId;
 	}

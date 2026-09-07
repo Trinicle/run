@@ -92,6 +92,10 @@ suite('Workbench parts', () => {
 			this.setFooterArea(footerContainer);
 		}
 
+		testSetTitleVisibility(visible: boolean): void {
+			this.setTitleVisibility(visible);
+		}
+
 		testLayoutContents(width: number, height: number) {
 			return this.layoutContents(width, height);
 		}
@@ -221,6 +225,20 @@ suite('Workbench parts', () => {
 				footerSize: new Dimension(100, 32),
 			},
 		});
+	});
+
+	test('Part Layout can hide the title to reclaim its height', () => {
+		const part = disposables.add(new MyPart2());
+		part.create(fixture);
+
+		const withTitle = part.testLayoutContents(100, 200);
+		part.testSetTitleVisibility(false);
+		const withoutTitle = part.testLayoutContents(100, 200);
+
+		assert.deepStrictEqual(withTitle.titleSize, new Dimension(100, 35));
+		assert.deepStrictEqual(withTitle.contentSize, new Dimension(100, 165));
+		assert.deepStrictEqual(withoutTitle.titleSize, Dimension.None);
+		assert.deepStrictEqual(withoutTitle.contentSize, new Dimension(100, 200));
 	});
 
 	test('Part Layout with Content only', function () {
