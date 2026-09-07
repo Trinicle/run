@@ -1,0 +1,50 @@
+---
+description: Verify UI changes and new features in the running editor with Playwright before claiming done
+alwaysApply: true
+---
+
+# Verify UI in the Editor with Playwright
+
+After modifying UI or adding a user-facing feature, **do not mark the work complete** until you verify it in a running VS Code / Code OSS window with Playwright and capture evidence.
+
+## When this applies
+
+- CSS, layout, theming, or visual behavior under `src/vs/workbench/`, `src/vs/editor/`, `src/vs/sessions/`, or `extensions/`
+- Workbench actions, menus, keybindings, or view/editor contributions that change what users see or interact with
+- New or changed UI flows (chat, tabs, panels, dialogs, settings, Agents window, etc.)
+
+Purely internal refactors with no user-visible change are exempt.
+
+## Required workflow
+
+1. **Build** — Ensure output is current (`npm run watch` running, or compile the affected areas).
+2. **Launch** — Read and follow `.claude/skills/launch/SKILL.md`:
+   - Windows: `.claude/skills/launch/scripts/launch.ps1`
+   - macOS/Linux: `.claude/skills/launch/scripts/launch.sh`
+3. **Attach Playwright** — Use a unique session on every run:
+   ```powershell
+   $PW_SESSION = "ui-verify-$PID"
+   npx @playwright/cli "-s=$PW_SESSION" attach --cdp=http://127.0.0.1:$CDP
+   npx @playwright/cli "-s=$PW_SESSION" tab-list
+   npx @playwright/cli "-s=$PW_SESSION" snapshot
+   ```
+4. **Exercise the change** — Drive the exact user path: open the view, run the command, click the control, resize, move panels, etc.
+5. **Assert with evidence** — Confirm expected DOM/state (snapshot, `eval`, or screenshot). Screenshots alone are not enough; assert the behavior you changed.
+6. **Report back** — Include what you did, what passed/failed, and artifact paths (snapshots/screenshots under the workspace, e.g. `.build/ui-verify/`).
+
+Restart the launched window after source changes; workbench code is not hot-reloaded.
+
+## Playwright tips for this repo
+
+- Always pass `-s=<unique-session>` on every `@playwright/cli` call.
+- Use `tab-select` if `snapshot` shows the wrong Electron target.
+- Monaco inputs ignore `fill`/`type`; use the launch skill's paste helpers or per-key `press`.
+- For chat focus, use `.claude/skills/launch/playwrightScripts/focus-chat-input.ts`.
+
+## Stronger validation (PRs / regressions)
+
+For captioned video, traces, and HTML reports, read `.github/skills/validate-ui-scenario/SKILL.md` and run a scenario with `node test/scenario/out/runScenario.js <scenario.cjs> --dev`.
+
+## Completion gate
+
+UI work is incomplete if you only edited code, ran typecheck, or read files. You must have Playwright evidence from the running editor that the change behaves as intended—or report what blocked verification and what manual step remains.
