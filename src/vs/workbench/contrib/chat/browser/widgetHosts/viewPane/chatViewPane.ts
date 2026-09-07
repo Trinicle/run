@@ -71,6 +71,7 @@ import { editorBackground } from "../../../../../../platform/theme/common/colorR
 import { ChatViewTitleControl } from "./chatViewTitleControl.js";
 import {
 	ChatSessionTabsControl,
+	getChatSessionTabCloseKeybinding,
 	getChatSessionTabTitle,
 } from "./chatSessionTabsControl.js";
 import { IThemeService } from "../../../../../../platform/theme/common/themeService.js";
@@ -1824,6 +1825,7 @@ export class ChatViewPane extends ViewPane implements IViewWelcomeDelegate {
 						}
 					},
 					onClose: (resource) => void this.closeSessionTab(resource),
+					getCloseKeybinding: () => getChatSessionTabCloseKeybinding(this.keybindingService),
 				}),
 			);
 		}

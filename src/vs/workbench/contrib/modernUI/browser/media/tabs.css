@@ -288,14 +288,12 @@
 .modern-ui-tabs.monaco-workbench:not(:is(.hc-black, .hc-light)) .part.editor .editor-group-container.active .tabs-container > .tab.active > .tab-fill,
 .modern-ui-tabs.monaco-workbench:not(:is(.hc-black, .hc-light)) .modern-ui-editor-tab-group.modern-ui-editor-tab-group-active .modern-ui-editor-tab.active > .modern-ui-editor-tab-fill {
 	background-color: var(--modern-ui-editor-tab-active-background);
-	border-top: var(--vscode-strokeThickness) solid var(--modern-ui-editor-tab-active-border-top);
 	border-bottom: var(--vscode-strokeThickness) solid var(--modern-ui-editor-tab-active-border);
 }
 
 .modern-ui-tabs.monaco-workbench:not(:is(.hc-black, .hc-light)) .part.editor .editor-group-container:not(.active) .tabs-container > .tab.active > .tab-fill,
 .modern-ui-tabs.monaco-workbench:not(:is(.hc-black, .hc-light)) .modern-ui-editor-tab-group:not(.modern-ui-editor-tab-group-active) .modern-ui-editor-tab.active > .modern-ui-editor-tab-fill {
 	background-color: var(--modern-ui-editor-tab-unfocused-active-background);
-	border-top: var(--vscode-strokeThickness) solid var(--modern-ui-editor-tab-unfocused-active-border-top);
 	border-bottom: var(--vscode-strokeThickness) solid var(--modern-ui-editor-tab-unfocused-active-border);
 }
 
@@ -313,7 +311,10 @@
  * full-height tab box. */
 .modern-ui-tabs.monaco-workbench:not(:is(.hc-black, .hc-light)) .part.editor .tabs-container > .tab.selected:not(.active).tab-border-top > .tab-fill,
 .modern-ui-tabs.monaco-workbench:not(:is(.hc-black, .hc-light)) .part.editor .tabs-container > .tab.active.multi-selected.tab-border-top > .tab-fill {
-	border: var(--vscode-strokeThickness) solid var(--tab-border-top-color);
+	border-top: none;
+	border-right: var(--vscode-strokeThickness) solid var(--tab-border-top-color);
+	border-bottom: var(--vscode-strokeThickness) solid var(--tab-border-top-color);
+	border-left: var(--vscode-strokeThickness) solid var(--tab-border-top-color);
 }
 
 .modern-ui-tabs.monaco-workbench:not(:is(.hc-black, .hc-light)) .part.editor .tabs-container > .tab.selected:not(.active).tab-border-top > .tab-fill {
@@ -577,6 +578,11 @@
 
 .modern-ui-tabs.monaco-workbench .part.editor > .content .editor-group-container > .title > .tabs-and-actions-container > .monaco-scrollable-element .scrollbar {
 	z-index: 11;
+}
+
+.modern-ui-tabs.monaco-workbench .thea-chat-tabs-host > .monaco-scrollable-element .scrollbar {
+	z-index: 11;
+	cursor: default;
 }
 
 .modern-ui-tabs .part.editor .tabs-container > .tab .tab-border-top-container {
